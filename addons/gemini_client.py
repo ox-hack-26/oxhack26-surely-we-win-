@@ -4,6 +4,7 @@ Every call returns None when there is no key or anything goes wrong, so callers
 can fall back to their offline path.
 """
 
+import functools
 import json
 from typing import Optional
 
@@ -16,7 +17,9 @@ def available() -> bool:
     return bool(config.GEMINI_API_KEY)
 
 
+@functools.lru_cache(maxsize=1)
 def _client():
+    # One client for the whole run: a throwaway client can be garbage-collected mid-request.
     from google import genai
 
     return genai.Client(api_key=config.GEMINI_API_KEY)
