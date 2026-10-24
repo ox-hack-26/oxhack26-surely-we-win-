@@ -148,6 +148,9 @@ def draft_report(alarm: Alarm, cause: Cause, n_scans: Optional[int] = None) -> t
         "Rewrite this draft incident report so it reads clearly. Return Markdown only.\n\n" + template,
         SYSTEM,
     )
-    if not text or "DRAFT" not in text:
+    if not text:
+        return template, "template"
+    if "DRAFT" not in text:
+        print("[gemini] report rejected, using template: it dropped the DRAFT label")
         return template, "template"
     return text.strip() + "\n", "gemini"

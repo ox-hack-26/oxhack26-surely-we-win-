@@ -231,8 +231,10 @@ def find_cause(alarm: Alarm, ev: Optional[Evidence] = None) -> Cause:
         return rules
     try:
         cause = Cause.model_validate({**result, "source": "gemini"})
-    except ValidationError:
+    except ValidationError as e:
+        print(f"[gemini] cause rejected, using rules: {e.error_count()} invalid field(s)")
         return rules
     if cause.category not in CATEGORIES:
+        print(f"[gemini] cause rejected, using rules: unknown category {cause.category!r}")
         return rules
     return cause
