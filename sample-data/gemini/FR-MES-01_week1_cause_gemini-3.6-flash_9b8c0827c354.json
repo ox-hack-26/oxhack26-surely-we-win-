@@ -1,0 +1,26 @@
+{
+  "tag": "FR-MES-01_week1_cause",
+  "model": "gemini-3.6-flash",
+  "kind": "json",
+  "response": {
+    "likely_cause": "Significant changes in camera hardware and image quality metrics (reduced sharpness, contrast, and overall quality, alongside increased image resolution) at Clinic FR-MES-01 compared to the training set.",
+    "category": "camera or image quality",
+    "evidence": [
+      "Drift alarm triggered with a drift score of 0.99 (0.5 = like training, 1 = clearly different) across 50 scans.",
+      "Mean image quality decreased from 0.5 in training to 0.198 (-0.604 relative change).",
+      "Mean sharpness decreased from 0.000399 to 0.000213 (-0.467 relative change).",
+      "Mean contrast decreased from 0.0963 to 0.0564 (-0.414 relative change).",
+      "Mean brightness decreased from 0.373 to 0.328 (-0.119 relative change).",
+      "Mean resolution increased from 1020.0 px to 2010.0 px (0.967 relative change).",
+      "Referral rate increased from 0.685 to 0.8 (0.169 relative change) and mean referral score increased from 0.193 to 0.269 (0.395 relative change).",
+      "Evidence from referral rate changes is weak due to the small sample size of 50 scans."
+    ],
+    "confidence": 0.85,
+    "recommended_checks": [
+      "Verify camera model, lens condition, and lighting/focus settings at Clinic FR-MES-01.",
+      "Inspect image acquisition pipeline and pre-processing handling for 2010.0 px resolution scans.",
+      "Audit patient acquisition protocol and operator training regarding glare and image sharpness.",
+      "Conduct clinical re-evaluation of flagged images to confirm whether true pathology or image artifacts influenced the referral score."
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "tag": "IN-APT-02_week1_cause",
+  "model": "gemini-3.6-flash",
+  "kind": "json",
+  "response": {
+    "likely_cause": "Severe reduction in image resolution and image quality metrics (sharpness, contrast, brightness) leading to distribution drift and increased referral rates.",
+    "category": "camera or image quality",
+    "evidence": [
+      "Drift score is 0.99, indicating images differ significantly from training/validation baseline.",
+      "Mean image resolution dropped from 1020.0 px to 224.0 px (relative change -0.781).",
+      "Mean quality dropped from 0.5 to 0.108 (relative change -0.784) and mean sharpness dropped from 0.000399 to 6.86e-05 (relative change -0.828).",
+      "Mean contrast dropped from 0.0963 to 0.0648 (relative change -0.327) and mean brightness dropped from 0.373 to 0.298 (relative change -0.2).",
+      "Mean referral score increased from 0.193 to 0.34 (relative change 0.763) and referral rate increased from 0.685 to 0.82 across 50 week 1 scans."
+    ],
+    "confidence": 0.85,
+    "recommended_checks": [
+      "Check image transfer and compression settings to verify why resolution dropped from 1020.0 px to 224.0 px.",
+      "Inspect fundus camera lenses for dirt or smudges and check focus/illumination settings.",
+      "Audit operator image acquisition techniques at clinic IN-APT-02."
+    ]
+  }
+}

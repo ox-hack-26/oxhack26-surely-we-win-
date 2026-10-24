@@ -1,0 +1,22 @@
+{
+  "tag": "US-WEAR-01_week9_cause",
+  "model": "gemini-3.6-flash",
+  "kind": "json",
+  "response": {
+    "likely_cause": "Severe degradation in image sharpness and overall image quality at the clinic, likely due to hardware or capture technique issues.",
+    "category": "camera or image quality",
+    "evidence": [
+      "Drift score of 0.96 observed over 50 scans in week 9.",
+      "Mean sharpness decreased from 0.000399 in training to 1.21e-05 in flagged scans, a relative change of -0.97.",
+      "Mean image quality dropped from 0.5 in training to 0.208, a relative change of -0.584.",
+      "Mean brightness dropped from 0.373 in training to 0.313, a relative change of -0.161.",
+      "Evidence strength is moderate to strong: while sample size is small at 50 scans, the drop in sharpness and quality is extreme and corroborated by visual inspection of blurry, dark scans."
+    ],
+    "confidence": 0.85,
+    "recommended_checks": [
+      "Inspect and clean the camera lens for smudges, dust, or fingerprints.",
+      "Verify flash brightness settings and auto-focus functionality on the camera.",
+      "Retrain operators at clinic US-WEAR-01 on proper image acquisition and patient positioning."
+    ]
+  }
+}
