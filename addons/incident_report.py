@@ -77,12 +77,20 @@ def template_report(alarm: Alarm, cause: Cause, n_scans: Optional[int] = None) -
             "expert grades for these scans have not yet arrived."
         )
         impact = f"If the estimate is right, {missed}. No patient harm has been confirmed."
-    action = (
-        "Expected harm exceeds the cost of review, so we recommend pausing the AI at this clinic "
-        "and sending its scans for human grading until the checks below are complete."
-        if alarm.expected_harm > alarm.review_cost
-        else "Expected harm does not exceed the cost of review; we recommend continued close monitoring."
-    )
+    if alarm.is_drift:
+        action = (
+            "ClinicDrift paused the AI at this clinic because its scans have drifted beyond what the AI was "
+            "validated on, so its catch rate can't be verified. We recommend sending this clinic's scans for "
+            "human grading until the checks below are complete."
+        )
+    else:
+        costs = f"Expected harm: {alarm.expected_harm:g}. Cost of review: {alarm.review_cost:g}.\n"
+        action = costs + (
+            "Expected harm exceeds the cost of review, so we recommend pausing the AI at this clinic "
+            "and sending its scans for human grading until the checks below are complete."
+            if alarm.expected_harm > alarm.review_cost
+            else "Expected harm does not exceed the cost of review; we recommend continued close monitoring."
+        )
     return f"""# DRAFT: Medical device adverse incident report
 
 > This is a draft for human review. It has not been submitted. A manufacturer would report
@@ -110,7 +118,6 @@ Evidence:
 {evidence}
 
 ## 6. Action
-Expected harm: {alarm.expected_harm:g}. Cost of review: {alarm.review_cost:g}.
 {action}
 
 Checks:

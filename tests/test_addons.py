@@ -200,12 +200,16 @@ def test_drift_report_quotes_no_catch_rate(drift_alarm):
     assert "catch rate (sensitivity for referable disease) at this clinic fell" not in md
     assert "referable cases may have been missed" not in md
     assert "referring more patients than usual: 86%" in md
+    assert "Expected harm" not in md and "337" not in md and "25000" not in md
+    assert "drifted beyond what the AI was validated on" in md
 
 
 def test_non_drift_wording_unchanged(alarm):
     assert not alarm.is_drift
     assert "can't be verified" not in alert_script(alarm, rule_cause(alarm))
-    assert "fell to\n71% (band 62% to 79%)" in template_report(alarm, rule_cause(alarm), 64)
+    md = template_report(alarm, rule_cause(alarm), 64)
+    assert "fell to\n71% (band 62% to 79%)" in md
+    assert "Expected harm: 4200. Cost of review: 1500.\nExpected harm exceeds the cost of review" in md
 
 
 @pytest.mark.parametrize("path", SAMPLE_ALARMS, ids=lambda p: p.stem)
