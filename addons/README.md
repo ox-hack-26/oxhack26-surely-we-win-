@@ -18,6 +18,7 @@ python -m addons.run_demo path/to/alarm.json  # one real alarm
 python -m addons.run_demo --all               # every alarm in $CLINICDRIFT_DATA/processed/alarms/ (else sample-data/alarms/)
 python -m addons.run_demo --clinic US-WEAR-01 # one clinic's alarm: test on this, not --all
 python -m pytest -q tests                     # offline, no keys needed
+python -m addons.run_demo --clinic US-WEAR-01 --light  # also flash the Arduino light: see hardware/clinic_light/README.md
 ```
 
 ## Gemini quota
