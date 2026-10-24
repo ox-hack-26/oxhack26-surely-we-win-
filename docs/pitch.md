@@ -46,15 +46,17 @@ numbers may change: pull dev again, re-read `docs/results.md` and update this sc
 
 ## Slide 5: What happens when it fires (40 s, live)
 
-**Live demo:** `python -m addons.run_demo --clinic US-WEAR-01 --replay --light`, with the Arduino on the table.
+**Live demo:** `python -m addons.run_demo --clinic US-WEAR-01 --replay` (no wifi or keys needed).
+Have `addons/out/US-WEAR-01_week9_incident_report.md` open in a second window to show the report.
 
 > When the alarm fires, the clinic lead needs to know what to do. Gemini looks at the flagged scans
 > next to typical training scans and names the likely cause, here camera or image quality, with
-> checks to run. It drafts an MHRA-style incident report, tagged with the MIT AI Risk Repository. And
-> the clinic gets a signal it can't miss.
+> checks to run. It drafts an MHRA-style incident report, tagged with the MIT AI Risk Repository,
+> and writes a short spoken alert: notice it says the catch rate can't be verified rather than
+> quoting a number it can't know.
 
-Point at the Arduino as it switches to the fast ALARM blink. Backup if the board fails:
-`python -m addons.status_light --replay --clinic US-WEAR-01 --delay 0.5` prints the same weeks.
+Optional, only if the Arduino has been tested on this laptop beforehand: add `--light` and point at
+the board's LED as it switches to the fast ALARM blink.
 
 ## Slide 6: Honest limits and next steps (20 s)
 
@@ -66,7 +68,7 @@ Point at the Arduino as it switches to the fast ALARM blink. Backup if the board
 ## Before you present
 
 - [ ] `git pull` dev, then check that the slide numbers match `docs/results.md`
-- [ ] Arduino uploaded, Serial Monitor closed, replay tested on this laptop
+- [ ] Only if using the light: Arduino uploaded, Serial Monitor closed, replay tested on this laptop
 - [ ] `run_demo --replay` rehearsed (no wifi or quota needed)
 - [ ] Each chart opens full screen (they're 1920×1080)
 
