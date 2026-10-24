@@ -24,6 +24,8 @@ Start from `clinicdrift.data.sources.load_scans()`. It already has `scan_id`, `s
 
 Image features go in `features/<source>.npy`: float32, shape `(n_scans, d)`, rows in the same order as that source's rows in `scans.parquet`.
 
+Until Sarah's files exist, `python -m clinicdrift.data.standin` writes a stand-in `scans.parquet`, `features.npy` (one array, same row order) and `model.json` under `processed/standin/`: frozen ImageNet ResNet-50 features plus a logistic regression, for the ~19,000 scans the engine needs. The engine switches to Sarah's files as soon as `processed/scans.parquet` exists.
+
 When the classifier is trained, also write `model.json` with `referral_threshold`, the `p_referable` cut-off for referring a scan. Pick it on `val` so the model catches 90% of referable cases: screening would rather over-refer than miss sight-threatening disease. Add `val_sensitivity` and `val_specificity` at that threshold.
 
 ## 2. `stream.parquet` and `clinics.json`: Tejas's replay (Sneha loads them into Tiger)
@@ -58,17 +60,22 @@ One row per clinic per week.
 | Column | Type | Meaning |
 | --- | --- | --- |
 | `clinic_id` | string | |
-| `week` | date | Monday the week starts |
+| `week` | int | Week number, 1 = first week |
+| `week_start` | date | Monday the week starts |
 | `n_scans` | int | Scans that week |
 | `est_sensitivity` | float 0–1 | Estimated share of referable cases the AI catches, from images alone |
-| `est_low`, `est_high` | float 0–1 | 90% band around the estimate |
-| `true_sensitivity` | float or null | From expert grades that have arrived by then; null until there are enough |
+| `est_low`, `est_high` | float 0–1 | 90% band around the estimate, wide enough to cover the catch rate the grades will show |
+| `expected_cases` | float | Expected referable cases that week |
 | `expected_missed` | float | Expected referable cases missed that week |
-| `drift` | float | How different that week's scans look from training (0 = same) |
-| `quality_mean` | float | Mean image quality |
+| `expected_false_referrals` | float | Expected healthy patients referred that week |
+| `drift_auc` | float 0.5–1 | How easily a classifier tells this week's scans from training scans: about 0.5 = same as training, near 1 = clearly different |
+| `lookalikes` | float | How many labelled reference cases resemble this week's scans (noisy; small = little evidence) |
+| `quality_mean` | float 0–1 | Mean image quality |
+| `referral_rate` | float 0–1 | Share of scans the model referred |
+| `true_cases`, `true_sensitivity`, `true_missed`, `true_false_referrals` | | Hindsight from every expert grade. Only for the backtest and the dashboard's "real" line: a real clinic would not know these that week |
 | `alarm` | bool | Alarm at the default costs |
 
-The dashboard recomputes the alarm when the cost sliders move, so it needs `expected_missed`, not just the flag. Default rule: alarm when `expected_missed × cost_missed_case > cost_review`. Tejas may refine the rule; the columns stay.
+The engine writes everything except `alarm` to `weekly_estimates.parquet` now (`python -m clinicdrift.engine.estimate`); `weekly.parquet` adds `alarm` once the decision rule is in. The dashboard recomputes the alarm when the cost sliders move, so it needs the expected counts, not just the flag. Draft rule: alarm when `expected_missed × cost_missed_case + expected_false_referrals × cost_false_referral > cost_review`, or when `drift_auc` says the estimates can no longer be trusted.
 
 ## 4. `alarms/<clinic_id>_week<week>.json`: Tejas → Vansh
 

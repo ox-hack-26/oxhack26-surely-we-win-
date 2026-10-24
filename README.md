@@ -33,6 +33,7 @@ clinicdrift/
   config.py      where the data folder is; reads .env
   data/          Sarah: image quality, image features, classifier
     sources.py   the shared scan list (scan IDs, splits, grades) and load_image
+    standin.py   stand-in model until Sarah's lands: python -m clinicdrift.data.standin
   engine/        Tejas: catch-rate estimate, alarm rule, backtest
     replay.py    simulated clinics: python -m clinicdrift.engine.replay
 addons/          Vansh: Gemini cause-finding and report, ElevenLabs alert
