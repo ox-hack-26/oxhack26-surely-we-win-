@@ -1,0 +1,14 @@
+numpy
+pandas
+pyarrow
+pillow
+scikit-learn
+torch
+torchvision
+timm
+psycopg[binary]
+fastapi
+uvicorn
+python-dotenv
+google-genai
+elevenlabs

@@ -1,0 +1,23 @@
+# secrets
+.env
+
+# data and outputs live outside the repo (CLINICDRIFT_DATA); this catches strays
+/data/
+/outputs/
+*.parquet
+*.npy
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# web
+node_modules/
+dist/
+.next/
+
+# os
+.DS_Store
+Thumbs.db
