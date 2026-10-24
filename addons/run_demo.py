@@ -5,6 +5,7 @@
     python -m addons.run_demo --all                 # every file in processed/alarms/ (else sample-data/alarms/)
     python -m addons.run_demo --clinic US-WEAR-01   # just that clinic's alarm
     python -m addons.run_demo alarm.json --scans scans.parquet
+    python -m addons.run_demo --clinic US-WEAR-01 --light   # also flash the Arduino light (hardware/clinic_light/)
 
 Gemini answers are saved and reused (see gemini_client.py): --replay only uses saved
 answers and never calls Gemini, --live always calls it.
@@ -79,6 +80,8 @@ if __name__ == "__main__":
     mode.add_argument("--live", action="store_true", help="always call Gemini, ignoring saved answers")
     parser.add_argument("--scans", help="scans.parquet (default: processed/scans.parquet, else processed/standin/scans.parquet)")
     parser.add_argument("--weekly", help="weekly.parquet (default: processed/weekly.parquet)")
+    parser.add_argument("--light", action="store_true", help="send ALARM to the Arduino clinic light for each alarm shown")
+    parser.add_argument("--port", help="the light's serial port, e.g. COM3 (default: auto-detect)")
     args = parser.parse_args()
 
     gemini_client.MODE = "replay" if args.replay else "live" if args.live else "auto"
@@ -90,4 +93,9 @@ if __name__ == "__main__":
     else:
         paths = [Path(args.alarm)]
     results = [run(p, args.scans, args.weekly) for p in paths]
+    if args.light:
+        from .status_light import send_state
+
+        for r in results:
+            send_state("ALARM", r["clinic_id"], args.port)
     print(json.dumps(results[0] if len(results) == 1 else results, indent=2))
