@@ -77,9 +77,18 @@ One row per clinic per week.
 | `quality_mean` | float 0–1 | Mean image quality |
 | `referral_rate` | float 0–1 | Share of scans the model referred |
 | `true_cases`, `true_sensitivity`, `true_missed`, `true_false_referrals` | | Hindsight from every expert grade. Only for the backtest and the dashboard's "real" line: a real clinic would not know these that week |
-| `alarm` | bool | Alarm at the default costs |
+| `trust` | float 0–1 | How far the label-free estimate is trusted: 1 while `drift_auc` is under 0.7, 0 above 0.9 |
+| `graded_cases`, `graded_caught` | int | Referable cases among the expert grades that have arrived by the end of the week (last 8 weeks of scans), and how many the AI referred |
+| `catch_rate`, `catch_low`, `catch_high` | float 0–1 | **The engine's belief about the catch rate**, with a 90% band: the estimate, discounted by trust, plus the grades so far. Plot this as "our estimate" |
+| `belief_cases`, `belief_missed` | float | Referable cases and missed cases that week under that belief |
+| `expected_harm` | float £ | Expected extra harm of carrying on for the horizon (6 weeks) compared with validated performance |
+| `alarm_this_week` | bool | This week's decision on its own: `expected_harm > review cost` |
+| `alarm` | bool | Whether the AI is pulled for review. Once on it stays on until someone reviews it, so old grades can't switch it off |
+| `alarm_reason` | string or null | `drift` (the scans no longer look validated) or `harm` (the estimate itself dropped) |
 
-The engine writes everything except `alarm` to `weekly_estimates.parquet` now (`python -m clinicdrift.engine.estimate`); `weekly.parquet` adds `alarm` once the decision rule is in. The dashboard recomputes the alarm when the cost sliders move, so it needs the expected counts, not just the flag. Draft rule: alarm when `expected_missed × cost_missed_case + expected_false_referrals × cost_false_referral > cost_review`, or when `drift_auc` says the estimates can no longer be trusted.
+`python -m clinicdrift.engine.estimate` writes the label-free columns to `weekly_estimates.parquet`; `python -m clinicdrift.engine.decide` adds the rest and writes `weekly.parquet`, the alarm files and `decision_settings.json` (costs and reference levels). Default costs are illustrative: £10,000 per missed referable case, £150 per unnecessary referral, £25,000 per review, 6-week horizon. For the cost sliders the dashboard can redo the decision from these columns: `expected_harm = 6 × (10,000 × belief_cases × (validated catch rate − catch_rate) + 150 × (referrals − catch_rate × belief_cases − usual false referrals))`, or just call `decide.run(Costs(...), write=False)`.
+
+`python -m clinicdrift.engine.backtest` replays the 20 weeks under four policies (wait for grades, watch the estimate, watch drift, ClinicDrift) and writes `backtest.parquet`, `backtest_summary.json` and a review-cost sweep in `backtest_sweep.parquet`.
 
 ## 4. `alarms/<clinic_id>_week<week>.json`: Tejas → Vansh
 
@@ -140,6 +149,8 @@ One file per alarm, in the format Vansh's add-ons read (`Alarm` in `addons/alarm
 | `expected_harm` | float | `expected_missed_cases × cost_missed_case`, in the cost sliders' units |
 | `review_cost` | float | Cost of pulling the AI for review, same units |
 | `referral_threshold` | float 0–1 | `p_referable` cut-off for referring a scan, copied from `model.json` |
+| `alarm_reason` | string | `drift` or `harm` (see `weekly.parquet`) |
+| `drift_auc` | float 0.5–1 | That week's drift score |
 | `flagged_scan_stats` | object | Stats for this clinic-week's scans (below) |
 | `training_scan_stats` | object | The same stats for the EyePACS training scans |
 | `flagged_scan_ids` | list of strings | This clinic-week's scans that look least like training |
@@ -158,6 +169,6 @@ Each stats object (`ScanStats`) summarises the scans it describes, from `scans.p
 | `referral_score_mean` | float 0–1 | Mean of `p_referable` |
 | `referral_rate` | float 0–1 | Share of scans the model refers: `p_referable >= referral_threshold` |
 
-Gemini compares the flagged and training stats, and the scans themselves where it can, to name the likely cause. `estimated_catch_rate`, `ci_low`, `ci_high` and `expected_missed_cases` are the same numbers as `est_sensitivity`, `est_low`, `est_high` and `expected_missed` in `weekly.parquet` for that clinic and week.
+Gemini compares the flagged and training stats, and the scans themselves where it can, to name the likely cause. `estimated_catch_rate`, `ci_low`, `ci_high`, `expected_missed_cases` and `expected_harm` are `catch_rate`, `catch_low`, `catch_high`, `belief_missed` and `expected_harm` in `weekly.parquet` for that clinic and week. The engine writes one file per clinic, in the week its alarm starts.
 
 **To do (Vansh):** add `flagged_scan_ids`, `reference_scan_ids` and `referral_threshold` to `Alarm`. Until then pydantic ignores them, so nothing breaks. Read the threshold from the alarm rather than hard-coding it; fall back to 0.5 only when it is missing.

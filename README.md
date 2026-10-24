@@ -35,8 +35,11 @@ clinicdrift/
     sources.py   the shared scan list (scan IDs, splits, grades) and load_image
     standin.py   stand-in model until Sarah's lands: python -m clinicdrift.data.standin
     degrade.py   simulated camera wear (blur + darkening) for the US-WEAR-01 clinic
-  engine/        Tejas: catch-rate estimate, alarm rule, backtest
+  engine/        Tejas: run these in order
     replay.py    simulated clinics: python -m clinicdrift.engine.replay
+    estimate.py  label-free catch rate and drift per clinic-week
+    decide.py    drift-aware belief, grades as they arrive, cost-loss alarm, alarm files
+    backtest.py  four monitoring policies compared, plus a review-cost sweep
 addons/          Vansh: Gemini cause-finding and report, ElevenLabs alert
 db/schema.sql    Sneha: Tiger Data tables
 docs/            hand-off formats
