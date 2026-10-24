@@ -1,0 +1,21 @@
+{
+  "tag": "US-UPD-01_week13_cause",
+  "model": "gemini-3.5-flash-lite",
+  "kind": "json",
+  "response": {
+    "likely_cause": "The clinic experienced a software update issue that altered downstream referral thresholds and behavior, although image quality metrics like brightness (0.361 vs 0.373) and sharpness (0.000457 vs 0.000399) remained relatively stable.",
+    "category": "model degradation",
+    "evidence": [
+      "Referral rate dropped significantly from 0.685 to 0.36, representing a relative change of -0.474.",
+      "Referral score mean decreased slightly from 0.193 to 0.188.",
+      "Image quality and sharpness did not drop sharply, with quality actually showing a slight increase from 0.5 to 0.529.",
+      "The evidence is weak regarding a pure population shift since software updates are explicitly noted as a factor and visual inspection shows possible processing anomalies."
+    ],
+    "confidence": 0.8,
+    "recommended_checks": [
+      "Verify the integrity and version of the recently deployed software update at the clinic.",
+      "Audit the decision threshold settings within the AI inference pipeline.",
+      "Review a random sample of recent scans manually to confirm actual disease prevalence versus model output."
+    ]
+  }
+}
