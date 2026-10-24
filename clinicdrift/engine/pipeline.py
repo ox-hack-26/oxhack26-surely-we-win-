@@ -4,7 +4,7 @@ Uses Sarah's processed/scans.parquet, features.npy and model.json when they exis
 The fingerprint identifies the replay's set of scans: it must match on every machine whose model
 files are used here, or the worn-camera copies won't line up.
 
-    python -m clinicdrift.engine.pipeline           # check, then estimate, decide, backtest, results, samples
+    python -m clinicdrift.engine.pipeline           # check, then estimate, decide, backtest, results, charts, samples
     python -m clinicdrift.engine.pipeline --check   # only check, and print the fingerprint
 """
 import argparse
@@ -68,9 +68,9 @@ def main() -> None:
     if args.check:
         return
 
-    from clinicdrift.engine import backtest, decide, estimate, results
+    from clinicdrift.engine import backtest, charts, decide, estimate, results
     for step, run in (("estimate", estimate.main), ("decide", decide.run), ("backtest", backtest.main),
-                      ("results", results.main)):
+                      ("results", results.main), ("charts", charts.main)):
         print(f"\n== {step}", flush=True)
         run()
     print("\n== sample data", flush=True)

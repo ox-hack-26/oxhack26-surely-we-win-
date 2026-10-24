@@ -2,6 +2,8 @@
 
 Generated 24 October 2026 by `python -m clinicdrift.engine.results` from the engine's outputs. Model: **stand-in: ImageNet ResNet-50 features + logistic regression**. Quote numbers from this file only, and regenerate it after the model or replay changes.
 
+Slide charts made from the same outputs: [camera wear](charts/1-camera-wear.png), [software update](charts/2-software-update.png), [backtest](charts/3-backtest.png), [cost sweep](charts/4-cost-sweep.png).
+
 ## Headline
 
 At the default costs (£10k per missed urgent case, £150 per unnecessary referral, £25k per review), replaying 20 weeks at 10 simulated clinics:
@@ -137,6 +139,9 @@ python -m clinicdrift.engine.estimate
 python -m clinicdrift.engine.decide
 python -m clinicdrift.engine.backtest
 python -m clinicdrift.engine.results
+python -m clinicdrift.engine.charts
 ```
+
+or all of it, after checking the model files fit: `python -m clinicdrift.engine.pipeline`.
 
 Inputs read from `processed/standin`.

@@ -49,6 +49,7 @@ clinicdrift/
     decide.py    drift-aware belief, grades as they arrive, cost-loss alarm, alarm files
     backtest.py  four monitoring policies compared, plus a review-cost sweep
     results.py   writes docs/results.md, the one source for pitch and Devpost numbers
+    charts.py    slide charts in docs/charts/, drawn from the same outputs
     pipeline.py  checks the model files fit, then runs all of the above: python -m clinicdrift.engine.pipeline
 addons/          Vansh: Gemini cause-finding and report, ElevenLabs alert
 db/schema.sql    Sneha: Tiger Data tables

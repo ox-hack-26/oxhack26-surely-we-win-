@@ -107,6 +107,9 @@ def main() -> None:
         f"Generated {date.today():%d %B %Y} by `python -m clinicdrift.engine.results` from the engine's outputs. "
         f"Model: **{model['model']}**. Quote numbers from this file only, and regenerate it after the model or replay changes.",
         "",
+        "Slide charts made from the same outputs: [camera wear](charts/1-camera-wear.png), "
+        "[software update](charts/2-software-update.png), [backtest](charts/3-backtest.png), [cost sweep](charts/4-cost-sweep.png).",
+        "",
         "## Headline",
         "",
         f"At the default costs ({gbp(costs['missed_case'])} per missed urgent case, {gbp(costs['false_referral'])} per unnecessary referral, "
@@ -236,7 +239,10 @@ def main() -> None:
         "python -m clinicdrift.engine.decide",
         "python -m clinicdrift.engine.backtest",
         "python -m clinicdrift.engine.results",
+        "python -m clinicdrift.engine.charts",
         "```",
+        "",
+        "or all of it, after checking the model files fit: `python -m clinicdrift.engine.pipeline`.",
         "",
         f"Inputs read from `{(base.relative_to(PROCESSED_DIR.parent) if base.is_relative_to(PROCESSED_DIR.parent) else base).as_posix()}`.",
         "",
