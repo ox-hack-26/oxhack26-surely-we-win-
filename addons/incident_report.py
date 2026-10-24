@@ -85,7 +85,7 @@ Checks:
 ## 7. Regulatory context
 - Post-market surveillance (PMS): this alarm is part of ongoing monitoring of the device in use.
 - Predetermined change control plan (PCCP): any model change made in response should fall within an agreed PCCP.
-- MHRA AI Airlock Phase 2 report: relevant to recommendations 3 and 4 on monitoring AI performance after deployment.
+- MHRA AI Airlock Phase 2 report: see recommendations 3 and 4.
 
 ## 8. MIT AI Risk Repository tags
 {tags}
