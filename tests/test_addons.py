@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from addons import config
+from addons import config, gemini_client
 from addons.alarm_schema import alarm_path, load_alarm
 from addons.cause_finder import compute_shifts, find_cause, rule_cause
 from addons.incident_report import template_report
@@ -19,6 +19,11 @@ def offline(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "GEMINI_API_KEY", "")
     monkeypatch.setattr(config, "ELEVENLABS_API_KEY", "")
     monkeypatch.setattr(config, "OUT_DIR", tmp_path)
+    monkeypatch.setattr(gemini_client, "CACHE_DIR", tmp_path / "cache")
+    monkeypatch.setattr(gemini_client, "SAMPLE_CACHE_DIR", tmp_path / "sample-gemini")
+    monkeypatch.setattr(gemini_client, "MIN_INTERVAL", 0)
+    monkeypatch.setattr(gemini_client, "BUSY_RETRY_WAIT", 0)
+    monkeypatch.setattr(gemini_client, "MODE", "auto")
 
 
 @pytest.fixture
@@ -235,3 +240,97 @@ def test_scans_fall_back_to_standin(tmp_path, monkeypatch):
     assert scan_data.default_scans_path() == tmp_path / "standin" / "scans.parquet"
     (tmp_path / "scans.parquet").write_bytes(b"")
     assert scan_data.default_scans_path() == tmp_path / "scans.parquet"
+
+
+class FakeGemini:
+    """Stands in for genai.Client: answers with `text`, or raises each error in `errors` first."""
+
+    def __init__(self, text='{"x": 1}', errors=()):
+        self.text, self.errors, self.n = text, list(errors), 0
+        self.models = self
+
+    def generate_content(self, **kwargs):
+        self.n += 1
+        if self.errors:
+            raise self.errors.pop(0)
+        return type("Resp", (), {"text": self.text})()
+
+
+class FakeAPIError(Exception):
+    def __init__(self, code, status, message):
+        super().__init__(message)
+        self.code, self.status, self.message = code, status, message
+
+
+@pytest.fixture
+def fake_gemini(monkeypatch):
+    def install(**kwargs):
+        fake = FakeGemini(**kwargs)
+        monkeypatch.setattr(config, "GEMINI_API_KEY", "test")
+        monkeypatch.setattr(gemini_client, "_client", lambda: fake)
+        return fake
+
+    return install
+
+
+def test_gemini_answer_is_saved_then_reused(fake_gemini):
+    fake = fake_gemini()
+    assert gemini_client.generate_json("p", {}, "s", tag="T") == {"x": 1}
+    assert gemini_client.generate_json("p", {}, "s", tag="T") == {"x": 1}
+    assert fake.n == 1
+    assert len(list(gemini_client.CACHE_DIR.glob("T_*.json"))) == 1
+    assert gemini_client.generate_json("other prompt", {}, "s", tag="T") == {"x": 1}
+    assert fake.n == 2
+
+
+def test_live_mode_ignores_saved_answers(fake_gemini, monkeypatch):
+    fake = fake_gemini(text="hello")
+    gemini_client.generate_text("p", "s", tag="T")
+    monkeypatch.setattr(gemini_client, "MODE", "live")
+    gemini_client.generate_text("p", "s", tag="T")
+    assert fake.n == 2
+
+
+def test_replay_never_calls_gemini(fake_gemini, monkeypatch):
+    fake = fake_gemini(text="hello")
+    monkeypatch.setattr(gemini_client, "MODE", "replay")
+    assert gemini_client.generate_text("p", "s", tag="T") is None
+    assert fake.n == 0
+    assert "replay" in gemini_client.last_error
+
+
+def test_replay_reads_committed_sample_answers(fake_gemini, monkeypatch):
+    fake = fake_gemini(text="saved")
+    gemini_client.generate_text("p", "s", tag="T")
+    gemini_client.CACHE_DIR.rename(gemini_client.SAMPLE_CACHE_DIR)
+    monkeypatch.setattr(gemini_client, "MODE", "replay")
+    monkeypatch.setattr(config, "GEMINI_API_KEY", "")
+    assert gemini_client.generate_text("p", "s", tag="T") == "saved"
+    assert fake.n == 1
+
+
+def test_gemini_error_is_surfaced(fake_gemini):
+    fake_gemini(errors=[FakeAPIError(404, "NOT_FOUND", "model is no longer available")])
+    summary = run(DEFAULT_ALARM)
+    assert summary["cause_source"] == "rules"
+    assert summary["gemini_error"].startswith("404 NOT_FOUND: model is no longer available")
+
+
+def test_short_429_is_retried_once(fake_gemini):
+    fake = fake_gemini(errors=[FakeAPIError(429, "RESOURCE_EXHAUSTED", "Please retry in 0.01s.")])
+    assert gemini_client.generate_json("p", {}, "s", tag="T") == {"x": 1}
+    assert fake.n == 2
+
+
+def test_daily_429_is_not_waited_for(fake_gemini):
+    fake = fake_gemini(errors=[FakeAPIError(429, "RESOURCE_EXHAUSTED", "Please retry in 12h42m4.5s.")])
+    assert gemini_client.generate_json("p", {}, "s", tag="T") is None
+    assert fake.n == 1
+    assert gemini_client.last_error.startswith("429 RESOURCE_EXHAUSTED")
+
+
+def test_busy_503_is_retried_once(fake_gemini):
+    fake = fake_gemini(errors=[FakeAPIError(503, "UNAVAILABLE", "high demand")] * 2)
+    assert gemini_client.generate_json("p", {}, "s", tag="T") is None
+    assert fake.n == 2
+    assert gemini_client.last_error.startswith("503 UNAVAILABLE")

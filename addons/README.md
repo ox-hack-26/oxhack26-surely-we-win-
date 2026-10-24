@@ -15,9 +15,34 @@ pip install -r requirements-addons.txt
 cp .env.example .env                          # optional: add GEMINI_API_KEY / ELEVENLABS_API_KEY
 python -m addons.run_demo                     # the fake alarm in addons/fixtures/
 python -m addons.run_demo path/to/alarm.json  # one real alarm
-python -m addons.run_demo --all               # every alarm in $CLINICDRIFT_DATA/processed/alarms/
+python -m addons.run_demo --all               # every alarm in $CLINICDRIFT_DATA/processed/alarms/ (else sample-data/alarms/)
+python -m addons.run_demo --clinic US-WEAR-01 # one clinic's alarm: test on this, not --all
 python -m pytest -q tests                     # offline, no keys needed
 ```
+
+## Gemini quota
+
+The free tier allows 20 requests a day and 5 a minute, and each alarm makes 2 calls (cause and
+report), so `--all` uses 14. Every successful answer is saved in `addons/cache/` (git-ignored) and
+reused the next time, keyed by clinic, week, model and the exact request; live calls are spaced 12 s
+apart, and a 429 that asks to wait under 90 s, or a 503 (model busy), is retried once. The run summary's `gemini_error`
+says why Gemini wasn't used (e.g. `404 NOT_FOUND` for a wrong model name, `429 RESOURCE_EXHAUSTED`
+for the quota).
+
+- `--replay` uses saved answers only and never calls Gemini: use it for the live demo.
+- `--live` always calls Gemini and overwrites the saved answer.
+
+`sample-data/gemini/` is read the same way, so the demo can show real Gemini output on any machine
+with no quota and no key. To fill it once there is quota:
+
+```bash
+python -m addons.run_demo --clinic US-WEAR-01   # check one alarm comes back from Gemini
+python -m addons.run_demo --all                 # the other six (14 calls in total)
+mkdir -p sample-data/gemini && cp addons/cache/*.json sample-data/gemini/
+python -m addons.run_demo --all --replay        # check: every cause_source/report_source is gemini
+```
+
+Then commit `sample-data/gemini/`.
 
 Outputs go to `addons/out/` (git-ignored), named after the alarm file:
 `<clinic_id>_week<N>_cause.json`, `<clinic_id>_week<N>_incident_report.md`, `<clinic_id>_week<N>_alert.mp3`.

@@ -10,6 +10,7 @@ addons/out/
 
 # add-on outputs
 addons/out/
+addons/cache/
 
 # python
 __pycache__/

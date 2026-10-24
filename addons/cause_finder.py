@@ -226,7 +226,9 @@ def find_cause(alarm: Alarm, ev: Optional[Evidence] = None) -> Cause:
     """Gemini's view of the cause if available, otherwise the rule result."""
     ev = ev or Evidence(flagged=alarm.flagged_scan_stats, reference=alarm.training_scan_stats)
     rules = rule_cause(alarm, ev)
-    result = gemini_client.generate_json(_prompt(alarm, ev, rules), CAUSE_SCHEMA, SYSTEM, images=ev.images)
+    result = gemini_client.generate_json(
+        _prompt(alarm, ev, rules), CAUSE_SCHEMA, SYSTEM, images=ev.images, tag=f"{alarm.stem}_cause"
+    )
     if result is None:
         return rules
     try:

@@ -147,6 +147,7 @@ def draft_report(alarm: Alarm, cause: Cause, n_scans: Optional[int] = None) -> t
     text = gemini_client.generate_text(
         "Rewrite this draft incident report so it reads clearly. Return Markdown only.\n\n" + template,
         SYSTEM,
+        tag=f"{alarm.stem}_report",
     )
     if not text:
         return template, "template"
