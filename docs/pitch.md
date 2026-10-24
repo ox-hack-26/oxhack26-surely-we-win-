@@ -69,3 +69,36 @@ Point at the Arduino as it switches to the fast ALARM blink. Backup if the board
 - [ ] Arduino uploaded, Serial Monitor closed, replay tested on this laptop
 - [ ] `run_demo --replay` rehearsed (no wifi or quota needed)
 - [ ] Each chart opens full screen (they're 1920×1080)
+
+## Likely judge questions
+
+Short, honest answers. Numbers are from `docs/results.md`; recheck them if the model changes.
+
+- **How can you estimate the catch rate without labels?** The model's scores are recalibrated on
+  labelled validation scans, so each score is the chance that scan is referable. Added up over a
+  week, they say how many referable cases there were and how many sat above the referral cut-off.
+  That only holds while the scans look like the calibration scans, so every week we also check drift.
+- **What is drift, exactly?** A classifier tries to tell this week's scans from training scans. Its
+  cross-validated AUC is the drift score: 0.5 means indistinguishable, 1.0 trivially different.
+  None of the 73 clinic-weeks without a change scored above 0.7.
+- **How does the decision work?** The belief about the catch rate combines the label-free estimate,
+  discounted as drift rises from 0.7 to 0.9, with whatever expert grades have arrived. We alarm when
+  the expected harm over the next 6 weeks is bigger than the cost of a review, and either the scans
+  have drifted or we are 90% sure the catch rate is below the 80% UK screening standard.
+- **Why not just watch drift?** It misses failures that don't change the images: at the software
+  update clinic drift stayed near 0.50 and watching drift never alarmed (7 of 8 caught).
+- **Why not just watch the AI's own estimate?** It's fooled by bad images: at the worn-camera clinic
+  it stayed near 94% while the real catch rate fell to 36% by week 20 (1 of 8 caught).
+- **Why did you alarm 3 weeks late on the software update?** By design: a harm alarm needs 90%
+  certainty that the catch rate is below 80%. Without that test, a few unlucky grades pulled healthy clinics.
+- **Aren't the costs made up?** Yes, they're illustrative, so we swept the review cost from £5k to
+  £100k. No false alarms at any cost; cheapest policy up to £25k; at £100k it costs more than waiting
+  for grades (£829k against £590k). A clinic would set its own costs.
+- **Is this real data?** Real public retinal scans (EyePACS, Messidor-2, APTOS, IDRiD), but the 10
+  clinics, the camera wear and the update are simulated, and the model is a stand-in (validation AUC
+  0.78). The datasets have no demographics, so we make no fairness claims about patients.
+- **Does Gemini just guess?** It sees the scan statistics and 2 flagged plus 2 training scans. On all
+  7 drift alarms its cause matched our rule-based check (camera or image quality). On the software
+  update it named the update, but the clinic's description mentions it, so we don't count that one.
+- **What would you need for a real deployment?** The fine-tuned model, real clinic data with real
+  camera changes, and clinics setting their own costs; then a human review loop feeding back confirmed causes.
