@@ -33,7 +33,7 @@ example from handoffs.md.
 
 | From | Used for | If missing |
 |---|---|---|
-| `processed/scans.parquet` rows for `flagged_scan_ids` / `reference_scan_ids` | Rebuilds `flagged_scan_stats` / `training_scan_stats` when the alarm leaves them out (a scan counts as referred when `p_referable >= referral_threshold` from the alarm, 0.5 if the alarm has none) | Cause is "unknown" with a note saying why |
+| `processed/scans.parquet` (or `processed/standin/scans.parquet` until it exists) rows for `flagged_scan_ids` / `reference_scan_ids` | Rebuilds `flagged_scan_stats` / `training_scan_stats` when the alarm leaves them out (a scan counts as referred when `p_referable >= referral_threshold` from the alarm, 0.5 if the alarm has none) | Cause is "unknown" with a note saying why |
 | `processed/weekly.parquet` (`n_scans` for the clinic and `week_start`) | Week's scan count when `flagged_scan_stats` is missing | "Too few scans" check skipped |
 | `clinicdrift.data.sources.load_image(scan_id)`, else `sample-data/images/<scan_id>.jpg` | Up to 2 flagged and 2 reference images sent to Gemini | No images sent |
 

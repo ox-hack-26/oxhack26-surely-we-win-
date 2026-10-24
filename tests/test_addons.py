@@ -225,3 +225,13 @@ def test_sample_alarm_images_load_without_raw_scans(path):
     alarm = load_alarm(path)
     assert len(load_images(alarm.flagged_scan_ids, "flagged")) == 2
     assert len(load_images(alarm.reference_scan_ids, "reference")) == 2
+
+
+def test_scans_fall_back_to_standin(tmp_path, monkeypatch):
+    from addons import scan_data
+
+    monkeypatch.setattr(scan_data, "SCANS_PATH", tmp_path / "scans.parquet")
+    monkeypatch.setattr(scan_data, "STANDIN_SCANS_PATH", tmp_path / "standin" / "scans.parquet")
+    assert scan_data.default_scans_path() == tmp_path / "standin" / "scans.parquet"
+    (tmp_path / "scans.parquet").write_bytes(b"")
+    assert scan_data.default_scans_path() == tmp_path / "scans.parquet"

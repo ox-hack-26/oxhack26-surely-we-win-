@@ -20,6 +20,7 @@ from clinicdrift.config import PROCESSED_DIR, REPO
 from .alarm_schema import FALLBACK_REFER_THRESHOLD, Alarm, ScanStats, summarise
 
 SCANS_PATH = PROCESSED_DIR / "scans.parquet"
+STANDIN_SCANS_PATH = PROCESSED_DIR / "standin" / "scans.parquet"  # until Sarah's model has run
 WEEKLY_PATH = PROCESSED_DIR / "weekly.parquet"
 IMAGES_PER_SET = 2
 SAMPLE_IMAGES = REPO / "sample-data" / "images"  # small copies, for machines without the raw scans
@@ -35,9 +36,14 @@ class Evidence:
     threshold_note: Optional[str] = None  # set when referral_rate was rebuilt from scans.parquet
 
 
+def default_scans_path() -> Path:
+    """Sarah's scans.parquet, or the stand-in's while hers doesn't exist (as the engine does)."""
+    return SCANS_PATH if SCANS_PATH.is_file() else STANDIN_SCANS_PATH
+
+
 def load_scan_rows(scan_ids, scans_path=None) -> list[dict]:
     """Rows of scans.parquet (or a JSON list with the same columns) for these ids."""
-    path = Path(scans_path) if scans_path else SCANS_PATH
+    path = Path(scans_path) if scans_path else default_scans_path()
     ids = set(scan_ids)
     if not ids or not path.is_file():
         return []

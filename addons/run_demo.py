@@ -65,7 +65,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the ClinicDrift add-ons on alarm files.")
     parser.add_argument("alarm", nargs="?", default=str(DEFAULT_ALARM), help="alarm JSON file")
     parser.add_argument("--all", action="store_true", help=f"run every alarm in {ALARMS_DIR}")
-    parser.add_argument("--scans", help="scans.parquet (default: processed/scans.parquet)")
+    parser.add_argument("--scans", help="scans.parquet (default: processed/scans.parquet, else processed/standin/scans.parquet)")
     parser.add_argument("--weekly", help="weekly.parquet (default: processed/weekly.parquet)")
     args = parser.parse_args()
 
