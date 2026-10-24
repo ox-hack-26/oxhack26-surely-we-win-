@@ -29,8 +29,8 @@ numbers may change: pull dev again, re-read `docs/results.md` and update this sc
 > Not every failure shows in the images. Here a vendor update in week 10 raises the referral cut-off.
 > The scans look exactly the same, so drift stays flat and a drift monitor never fires. But the catch
 > rate falls from 90% to 67%. ClinicDrift combines the label-free estimate with the few grades that
-> have arrived, and in week 13, once it is 90% sure the catch rate is below the 80% UK screening
-> standard, it raises a harm alarm.
+> have arrived, and once it is 90% sure the catch rate is below the 80% UK screening standard it
+> raises a harm alarm: a median of 6 weeks after the update.
 
 ## Slide 4: It's a decision, not a dashboard (30 s)
 
@@ -38,11 +38,14 @@ numbers may change: pull dev again, re-read `docs/results.md` and update this sc
 
 > We replayed 20 weeks at 10 clinics under four ways of monitoring. Every alarm is a decision: pull
 > the AI for review only when the expected harm of missed cases is bigger than the cost of the review.
-> ClinicDrift caught all 8 failures, with zero false alarms and 2.3 extra missed urgent cases.
-> Today's practice, waiting for grades, caught 2 and let 33 through. £223k against £440k.
+> We reran it 100 times with the expert grades redrawn. ClinicDrift caught all 8 failures every time,
+> with zero false alarms and a median of 8 extra missed urgent cases. Today's practice, waiting for
+> grades, caught a median of none, raised false alarms in 28% of runs and let 49 through. £282k
+> against £555k.
 
 (If asked about the costs: `docs/charts/4-cost-sweep.png`. It stays cheapest while a review costs up to
-£25k, and raised no false alarms at any review cost.)
+£25k, and raised no false alarms at any review cost. At £50k it still beats waiting for grades (£482k
+against £555k), though watching the estimate is cheapest (£406k).)
 
 ## Slide 5: What happens when it fires (40 s, live)
 
@@ -91,11 +94,13 @@ Short, honest answers. Numbers are from `docs/results.md`; recheck them if the m
   update clinic drift stayed near 0.50 and watching drift never alarmed (7 of 8 caught).
 - **Why not just watch the AI's own estimate?** It's fooled by bad images: at the worn-camera clinic
   it stayed near 94% while the real catch rate fell to 36% by week 20 (1 of 8 caught).
-- **Why did you alarm 3 weeks late on the software update?** By design: a harm alarm needs 90%
+- **Why did you alarm 6 weeks late on the software update?** By design (a median of 6 weeks, 12–17
+  across draws of the grades): a harm alarm needs 90%
   certainty that the catch rate is below 80%. Without that test, a few unlucky grades pulled healthy clinics.
 - **Aren't the costs made up?** Yes, they're illustrative, so we swept the review cost from £5k to
-  £100k. No false alarms at any cost; cheapest policy up to £25k; at £100k it costs more than waiting
-  for grades (£829k against £590k). A clinic would set its own costs.
+  £100k. No false alarms at any cost; cheapest policy up to £25k; at £50k cheaper than waiting
+  (£482k against £555k) but watching the estimate is cheapest (£406k); at £100k it costs more than
+  waiting for grades (£925k against £563k). A clinic would set its own costs.
 - **Is this real data?** Real public retinal scans (EyePACS, Messidor-2, APTOS, IDRiD), but the 10
   clinics, the camera wear and the update are simulated, and the model is a stand-in (validation AUC
   0.78). The datasets have no demographics, so we make no fairness claims about patients.
