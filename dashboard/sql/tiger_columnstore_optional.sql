@@ -1,0 +1,9 @@
+-- OPTIONAL: Execute only after verifying your Tiger Cloud TimescaleDB version.
+-- TimescaleDB 2.18+ hypercore/columnstore API (check availability first).
+-- For older versions, use the service's supported compression syntax instead.
+-- Never run this as part of initial schema creation.
+-- Example commands, deliberately commented to prevent unintended changes:
+-- ALTER TABLE clinicdrift_demo.scan_events SET (timescaledb.enable_columnstore = true);
+-- CALL add_columnstore_policy('clinicdrift_demo.scan_events', after => INTERVAL '30 days');
+-- Inspect compression/columnstore stats via timescaledb_information views available on your service.
+-- If using a columnstore policy, ensure late expert-grade updates are supported by your version and workflow.

@@ -48,6 +48,7 @@ clinicdrift/
     estimate.py  label-free catch rate and drift per clinic-week
     decide.py    drift-aware belief, grades as they arrive, cost-loss alarm, alarm files
     backtest.py  four monitoring policies compared, plus a review-cost sweep
+    robustness.py  the backtest under 100 redraws of the expert grades: ranges, not one lucky run
     results.py   writes docs/results.md, the one source for pitch and Devpost numbers
     charts.py    slide charts in docs/charts/, drawn from the same outputs
     pipeline.py  checks the model files fit, then runs all of the above: python -m clinicdrift.engine.pipeline

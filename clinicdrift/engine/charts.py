@@ -9,10 +9,13 @@ Alarms are the status red, always with a marker and a label. Titles state the fi
 compute their numbers, so they stay true when the model changes.
 """
 import json
+import logging
 
 import matplotlib
 
 matplotlib.use("Agg")
+# Segoe UI has a semibold weight; the fallback fonts don't, and matplotlib warns about each one.
+logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR)
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
@@ -23,6 +26,7 @@ from matplotlib.ticker import FuncFormatter, PercentFormatter  # noqa: E402
 from clinicdrift.config import PROCESSED_DIR, REPO  # noqa: E402
 from clinicdrift.engine.decide import MIN_CATCH_RATE  # noqa: E402
 from clinicdrift.engine.estimate import load_inputs  # noqa: E402
+from clinicdrift.engine.robustness import SWEEP_DRAWS  # noqa: E402
 
 OUT = REPO / "docs" / "charts"
 WEAR, UPDATE = "US-WEAR-01", "US-UPD-01"
@@ -192,15 +196,61 @@ def backtest_chart(summary, footnote, path):
     plt.close(fig)
 
 
-def sweep_chart(sweep, footnote, path):
+def robust_backtest_chart(robust, footnote, path):
+    """The backtest across many draws of the grades: shares as bars, medians as dots with 90% whiskers."""
+    pol = {p["policy"]: p for p in robust["policies"]}
+    cd, n = pol["ClinicDrift"], robust["n_draws"]
+    every_time = cd["all_caught_share"] == 1 and cd["any_false_alarm_share"] == 0
+    title = (f"Across {n} draws of the grades, only ClinicDrift caught all {cd['changes']} failures every time, with no false alarms"
+             if every_time else f"How the four monitoring policies did across {n} draws of the expert grades")
+    subtitle = ("Same 10 clinics over 20 weeks · dots: median, lines: 90% of draws · "
+                "£10k per missed case, £150 per unnecessary referral, £25k per review")
+    fig = frame(title, subtitle, footnote)
+    panels = [
+        ("bar", "all_caught_share", f"Draws catching all {cd['changes']} failures", lambda v: f"{v:.0%}"),
+        ("bar", "any_false_alarm_share", "Draws with a false alarm", lambda v: f"{v:.0%}"),
+        ("dot", "missed", "Extra urgent cases missed", lambda v: f"{v:.1f}"),
+        ("dot", "cost", "Total cost", lambda v: f"£{v / 1000:,.0f}k"),
+    ]
+    for i, (form, key, heading, fmt) in enumerate(panels):
+        ax = fig.add_axes([0.15 + i * 0.215, 0.12, 0.16, 0.64])
+        if form == "bar":
+            values = [pol[p][key] for p in POLICY_ORDER]
+            xmax = 1.3
+        else:
+            values = [(pol[p][f"{key}_median"], pol[p][f"{key}_p5"], pol[p][f"{key}_p95"]) for p in POLICY_ORDER]
+            xmax = max(hi for _, _, hi in values) * 1.35 or 1
+        ax.set_xlim(0, xmax)
+        ax.set_ylim(len(POLICY_ORDER) - 0.4, -0.6)
+        for row, (policy, value) in enumerate(zip(POLICY_ORDER, values)):
+            colour = POLICY_COLOURS[policy]
+            if form == "bar":
+                bar(ax, row, value, colour, 0.42)
+                ax.text(value + xmax * 0.03, row, fmt(value), va="center", fontsize=11.5, color=INK)
+            else:
+                mid, lo, hi = value
+                ax.plot([lo, hi], [row, row], color=colour, lw=LINE, solid_capstyle="round", zorder=3)
+                ax.plot(mid, row, "o", color=colour, ms=DOT + 2.5, markeredgecolor=SURFACE, markeredgewidth=1.5, zorder=4)
+                ax.text(hi + xmax * 0.04, row, fmt(mid), va="center", fontsize=11.5, color=INK)
+        ax.set_yticks(range(len(POLICY_ORDER)), POLICY_ORDER if i == 0 else [""] * len(POLICY_ORDER), fontsize=12)
+        ax.tick_params(axis="y", length=0, labelcolor=INK)
+        ax.tick_params(axis="x", labelbottom=False, length=0)
+        ax.grid(False)
+        ax.spines["bottom"].set_visible(False)
+        ax.set_title(heading, loc="left", fontsize=12, color=INK, pad=10)
+    fig.savefig(path, dpi=DPI, facecolor=SURFACE)
+    plt.close(fig)
+
+
+def sweep_chart(sweep, footnote, path, note=""):
     pivot = sweep.pivot(index="review_cost", columns="policy", values="total_cost_gbp")[POLICY_ORDER]
     cheapest = pivot.idxmin(axis=1)
     wins = [r for r in pivot.index if cheapest[r] == "ClinicDrift"]
     cd_false = int(sweep[sweep["policy"] == "ClinicDrift"]["false_alarms"].sum())
     title = (f"ClinicDrift is the cheapest way to monitor while a review costs up to £{max(wins) / 1000:,.0f}k"
              if wins else "How the total cost depends on what a review costs")
-    subtitle = ("Total cost of missed cases, unnecessary referrals and reviews, by review cost; other costs fixed · "
-                + ("ClinicDrift raised no false alarms at any review cost" if cd_false == 0 else f"ClinicDrift false alarms across the sweep: {cd_false}"))
+    subtitle = (f"Total cost of missed cases, unnecessary referrals and reviews, by review cost; other costs fixed{note} · "
+                + ("ClinicDrift raised no false alarms at any review cost" if cd_false == 0 else "ClinicDrift raised false alarms at some review costs"))
     fig = frame(title, subtitle, footnote)
     ax = fig.add_axes([0.08, 0.12, 0.72, 0.66])
     x = list(pivot.index)
@@ -238,7 +288,10 @@ def main() -> None:
     _, _, model, _ = load_inputs()
     weekly = pd.read_parquet(PROCESSED_DIR / "weekly.parquet")
     summary = pd.DataFrame(json.loads((PROCESSED_DIR / "backtest_summary.json").read_text(encoding="utf-8")))
-    sweep = pd.read_parquet(PROCESSED_DIR / "backtest_sweep.parquet")
+    robust_path, robust_sweep = PROCESSED_DIR / "robustness_summary.json", PROCESSED_DIR / "robustness_sweep.parquet"
+    robust = json.loads(robust_path.read_text(encoding="utf-8")) if robust_path.exists() else None
+    sweep = pd.read_parquet(robust_sweep if robust_sweep.exists() else PROCESSED_DIR / "backtest_sweep.parquet")
+    sweep_note = f" (median over {SWEEP_DRAWS} draws of the grades)" if robust_sweep.exists() else ""
     clinics = {c["clinic_id"]: c for c in json.loads((PROCESSED_DIR / "clinics.json").read_text(encoding="utf-8"))}
     footnote = (f"Model: {model['model']} · simulated clinics built from real public scans (EyePACS, Messidor-2, APTOS, IDRiD) "
                 "· regenerate with python -m clinicdrift.engine.charts")
@@ -262,13 +315,19 @@ def main() -> None:
         before, after = d.loc[: start - 1], d.loc[start:]
         title = (f"Faulty update: drift stayed silent while the catch rate fell from "
                  f"{before['true_sensitivity'].mean():.0%} to {after['true_sensitivity'].mean():.0%}")
-        subtitle = (f"{UPDATE} · a vendor update raises the referral cut-off in week {start} · the scans don't change, so "
-                    f"drift-watching never fires · ClinicDrift raises a harm alarm instead")
+        upd = next((c for c in robust["clinics"] if c["policy"] == "ClinicDrift" and c["clinic_id"] == UPDATE), None) if robust else None
+        when = (f" a median of {upd['first_alarm_median'] - start:g} weeks later (weeks {upd['first_alarm_p5']:g}–"
+                f"{upd['first_alarm_p95']:g} across draws of the grades)" if upd and upd["first_alarm_median"] is not None else " instead")
+        subtitle = (f"{UPDATE} · a vendor update raises the referral cut-off in week {start} · "
+                    f"ClinicDrift's harm alarm comes{when}")
         clinic_story(weekly, UPDATE, start, f"Faulty update running from week {start}", title, subtitle, footnote, OUT / "2-software-update.png")
         written.append("2-software-update.png")
 
-    backtest_chart(summary, footnote, OUT / "3-backtest.png")
-    sweep_chart(sweep, footnote, OUT / "4-cost-sweep.png")
+    if robust:
+        robust_backtest_chart(robust, footnote, OUT / "3-backtest.png")
+    else:
+        backtest_chart(summary, footnote, OUT / "3-backtest.png")
+    sweep_chart(sweep, footnote, OUT / "4-cost-sweep.png", sweep_note)
     written += ["3-backtest.png", "4-cost-sweep.png"]
     print(f"Wrote {', '.join(written)} to {OUT}")
 

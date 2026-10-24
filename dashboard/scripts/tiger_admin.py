@@ -3,8 +3,8 @@ import argparse
 from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
-from clinicdrift.storage import healthcheck,init_schema,upsert_weekly,upsert_scans
-from clinicdrift.mock_data import demo_weekly
+from ui.storage import healthcheck,init_schema,upsert_weekly,upsert_scans
+from ui.mock_data import demo_weekly
 
 load_dotenv()
 p=argparse.ArgumentParser()

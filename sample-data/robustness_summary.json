@@ -1,0 +1,475 @@
+{
+  "n_draws": 100,
+  "policies": [
+    {
+      "policy": "wait for grades",
+      "changes": 8,
+      "caught_median": 0.0,
+      "caught_min": 0,
+      "caught_max": 2,
+      "all_caught_share": 0.0,
+      "false_alarms_mean": 0.29,
+      "any_false_alarm_share": 0.28,
+      "median_weeks_to_alarm": 12.0,
+      "missed_median": 49.18604651162792,
+      "missed_p5": 35.52558139534885,
+      "missed_p95": 49.18604651162792,
+      "cost_median": 554822.2575691094,
+      "cost_p5": 443748.0225244993,
+      "cost_p95": 601856.2905879773
+    },
+    {
+      "policy": "watch estimate",
+      "changes": 8,
+      "caught_median": 1.0,
+      "caught_min": 1,
+      "caught_max": 1,
+      "all_caught_share": 0.0,
+      "false_alarms_mean": 0.0,
+      "any_false_alarm_share": 0.0,
+      "median_weeks_to_alarm": 0.0,
+      "missed_median": 29.34883720930234,
+      "missed_p5": 29.34883720930234,
+      "missed_p95": 29.34883720930234,
+      "cost_median": 381450.1645458536,
+      "cost_p5": 381450.1645458536,
+      "cost_p95": 381450.1645458536
+    },
+    {
+      "policy": "watch drift",
+      "changes": 8,
+      "caught_median": 7.0,
+      "caught_min": 7,
+      "caught_max": 7,
+      "all_caught_share": 0.0,
+      "false_alarms_mean": 0.0,
+      "any_false_alarm_share": 0.0,
+      "median_weeks_to_alarm": 1.0,
+      "missed_median": 20.325581395348838,
+      "missed_p5": 20.325581395348838,
+      "missed_p95": 20.325581395348838,
+      "cost_median": 382005.8139534884,
+      "cost_p5": 382005.8139534884,
+      "cost_p95": 382005.8139534884
+    },
+    {
+      "policy": "ClinicDrift",
+      "changes": 8,
+      "caught_median": 8.0,
+      "caught_min": 8,
+      "caught_max": 8,
+      "all_caught_share": 1.0,
+      "false_alarms_mean": 0.0,
+      "any_false_alarm_share": 0.0,
+      "median_weeks_to_alarm": 0.0,
+      "missed_median": 8.16279069767442,
+      "missed_p5": 1.9922480620155043,
+      "missed_p95": 12.457364341085274,
+      "cost_median": 281627.9069767442,
+      "cost_p5": 219922.48062015505,
+      "cost_p95": 324573.64341085276
+    }
+  ],
+  "clinics": [
+    {
+      "policy": "wait for grades",
+      "clinic_id": "FR-MES-01",
+      "changed_week": 1,
+      "alarm_share": 0.03,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 20.0,
+      "first_alarm_p5": 18.2,
+      "first_alarm_p95": 20.0
+    },
+    {
+      "policy": "watch estimate",
+      "clinic_id": "FR-MES-01",
+      "changed_week": 1,
+      "alarm_share": 0.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": null,
+      "first_alarm_p5": null,
+      "first_alarm_p95": null
+    },
+    {
+      "policy": "watch drift",
+      "clinic_id": "FR-MES-01",
+      "changed_week": 1,
+      "alarm_share": 1.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 2.0,
+      "first_alarm_p5": 2.0,
+      "first_alarm_p95": 2.0
+    },
+    {
+      "policy": "ClinicDrift",
+      "clinic_id": "FR-MES-01",
+      "changed_week": 1,
+      "alarm_share": 1.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 1.0,
+      "first_alarm_p5": 1.0,
+      "first_alarm_p95": 1.0
+    },
+    {
+      "policy": "wait for grades",
+      "clinic_id": "IN-APT-01",
+      "changed_week": 1,
+      "alarm_share": 0.22,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 17.0,
+      "first_alarm_p5": 10.05,
+      "first_alarm_p95": 20.0
+    },
+    {
+      "policy": "watch estimate",
+      "clinic_id": "IN-APT-01",
+      "changed_week": 1,
+      "alarm_share": 0.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": null,
+      "first_alarm_p5": null,
+      "first_alarm_p95": null
+    },
+    {
+      "policy": "watch drift",
+      "clinic_id": "IN-APT-01",
+      "changed_week": 1,
+      "alarm_share": 1.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 2.0,
+      "first_alarm_p5": 2.0,
+      "first_alarm_p95": 2.0
+    },
+    {
+      "policy": "ClinicDrift",
+      "clinic_id": "IN-APT-01",
+      "changed_week": 1,
+      "alarm_share": 1.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 1.0,
+      "first_alarm_p5": 1.0,
+      "first_alarm_p95": 1.0
+    },
+    {
+      "policy": "wait for grades",
+      "clinic_id": "IN-APT-02",
+      "changed_week": 1,
+      "alarm_share": 0.17,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 13.0,
+      "first_alarm_p5": 11.0,
+      "first_alarm_p95": 16.0
+    },
+    {
+      "policy": "watch estimate",
+      "clinic_id": "IN-APT-02",
+      "changed_week": 1,
+      "alarm_share": 0.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": null,
+      "first_alarm_p5": null,
+      "first_alarm_p95": null
+    },
+    {
+      "policy": "watch drift",
+      "clinic_id": "IN-APT-02",
+      "changed_week": 1,
+      "alarm_share": 1.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 2.0,
+      "first_alarm_p5": 2.0,
+      "first_alarm_p95": 2.0
+    },
+    {
+      "policy": "ClinicDrift",
+      "clinic_id": "IN-APT-02",
+      "changed_week": 1,
+      "alarm_share": 1.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 1.0,
+      "first_alarm_p5": 1.0,
+      "first_alarm_p95": 1.0
+    },
+    {
+      "policy": "wait for grades",
+      "clinic_id": "IN-IDR-01",
+      "changed_week": 1,
+      "alarm_share": 0.02,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 10.0,
+      "first_alarm_p5": 10.0,
+      "first_alarm_p95": 10.0
+    },
+    {
+      "policy": "watch estimate",
+      "clinic_id": "IN-IDR-01",
+      "changed_week": 1,
+      "alarm_share": 0.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": null,
+      "first_alarm_p5": null,
+      "first_alarm_p95": null
+    },
+    {
+      "policy": "watch drift",
+      "clinic_id": "IN-IDR-01",
+      "changed_week": 1,
+      "alarm_share": 1.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 2.0,
+      "first_alarm_p5": 2.0,
+      "first_alarm_p95": 2.0
+    },
+    {
+      "policy": "ClinicDrift",
+      "clinic_id": "IN-IDR-01",
+      "changed_week": 1,
+      "alarm_share": 1.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 1.0,
+      "first_alarm_p5": 1.0,
+      "first_alarm_p95": 1.0
+    },
+    {
+      "policy": "wait for grades",
+      "clinic_id": "SW-APT-01",
+      "changed_week": 11,
+      "alarm_share": 0.03,
+      "false_alarm_share": 0.03,
+      "first_alarm_median": 10.0,
+      "first_alarm_p5": 8.2,
+      "first_alarm_p95": 10.0
+    },
+    {
+      "policy": "watch estimate",
+      "clinic_id": "SW-APT-01",
+      "changed_week": 11,
+      "alarm_share": 0.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": null,
+      "first_alarm_p5": null,
+      "first_alarm_p95": null
+    },
+    {
+      "policy": "watch drift",
+      "clinic_id": "SW-APT-01",
+      "changed_week": 11,
+      "alarm_share": 1.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 12.0,
+      "first_alarm_p5": 12.0,
+      "first_alarm_p95": 12.0
+    },
+    {
+      "policy": "ClinicDrift",
+      "clinic_id": "SW-APT-01",
+      "changed_week": 11,
+      "alarm_share": 1.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 11.0,
+      "first_alarm_p5": 11.0,
+      "first_alarm_p95": 11.0
+    },
+    {
+      "policy": "wait for grades",
+      "clinic_id": "SW-MES-01",
+      "changed_week": 9,
+      "alarm_share": 0.03,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 18.0,
+      "first_alarm_p5": 16.2,
+      "first_alarm_p95": 18.0
+    },
+    {
+      "policy": "watch estimate",
+      "clinic_id": "SW-MES-01",
+      "changed_week": 9,
+      "alarm_share": 0.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": null,
+      "first_alarm_p5": null,
+      "first_alarm_p95": null
+    },
+    {
+      "policy": "watch drift",
+      "clinic_id": "SW-MES-01",
+      "changed_week": 9,
+      "alarm_share": 1.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 10.0,
+      "first_alarm_p5": 10.0,
+      "first_alarm_p95": 10.0
+    },
+    {
+      "policy": "ClinicDrift",
+      "clinic_id": "SW-MES-01",
+      "changed_week": 9,
+      "alarm_share": 1.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 9.0,
+      "first_alarm_p5": 9.0,
+      "first_alarm_p95": 9.0
+    },
+    {
+      "policy": "wait for grades",
+      "clinic_id": "US-EYE-01",
+      "changed_week": null,
+      "alarm_share": 0.07,
+      "false_alarm_share": 0.07,
+      "first_alarm_median": 12.0,
+      "first_alarm_p5": 11.0,
+      "first_alarm_p95": 12.7
+    },
+    {
+      "policy": "watch estimate",
+      "clinic_id": "US-EYE-01",
+      "changed_week": null,
+      "alarm_share": 0.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": null,
+      "first_alarm_p5": null,
+      "first_alarm_p95": null
+    },
+    {
+      "policy": "watch drift",
+      "clinic_id": "US-EYE-01",
+      "changed_week": null,
+      "alarm_share": 0.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": null,
+      "first_alarm_p5": null,
+      "first_alarm_p95": null
+    },
+    {
+      "policy": "ClinicDrift",
+      "clinic_id": "US-EYE-01",
+      "changed_week": null,
+      "alarm_share": 0.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": null,
+      "first_alarm_p5": null,
+      "first_alarm_p95": null
+    },
+    {
+      "policy": "wait for grades",
+      "clinic_id": "US-EYE-02",
+      "changed_week": null,
+      "alarm_share": 0.19,
+      "false_alarm_share": 0.19,
+      "first_alarm_median": 15.0,
+      "first_alarm_p5": 8.9,
+      "first_alarm_p95": 16.39999999999999
+    },
+    {
+      "policy": "watch estimate",
+      "clinic_id": "US-EYE-02",
+      "changed_week": null,
+      "alarm_share": 0.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": null,
+      "first_alarm_p5": null,
+      "first_alarm_p95": null
+    },
+    {
+      "policy": "watch drift",
+      "clinic_id": "US-EYE-02",
+      "changed_week": null,
+      "alarm_share": 0.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": null,
+      "first_alarm_p5": null,
+      "first_alarm_p95": null
+    },
+    {
+      "policy": "ClinicDrift",
+      "clinic_id": "US-EYE-02",
+      "changed_week": null,
+      "alarm_share": 0.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": null,
+      "first_alarm_p5": null,
+      "first_alarm_p95": null
+    },
+    {
+      "policy": "wait for grades",
+      "clinic_id": "US-UPD-01",
+      "changed_week": 10,
+      "alarm_share": 0.06,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 18.5,
+      "first_alarm_p5": 14.25,
+      "first_alarm_p95": 20.0
+    },
+    {
+      "policy": "watch estimate",
+      "clinic_id": "US-UPD-01",
+      "changed_week": 10,
+      "alarm_share": 1.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 10.0,
+      "first_alarm_p5": 10.0,
+      "first_alarm_p95": 10.0
+    },
+    {
+      "policy": "watch drift",
+      "clinic_id": "US-UPD-01",
+      "changed_week": 10,
+      "alarm_share": 0.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": null,
+      "first_alarm_p5": null,
+      "first_alarm_p95": null
+    },
+    {
+      "policy": "ClinicDrift",
+      "clinic_id": "US-UPD-01",
+      "changed_week": 10,
+      "alarm_share": 1.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 16.0,
+      "first_alarm_p5": 12.0,
+      "first_alarm_p95": 17.0
+    },
+    {
+      "policy": "wait for grades",
+      "clinic_id": "US-WEAR-01",
+      "changed_week": 7,
+      "alarm_share": 0.05,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 15.0,
+      "first_alarm_p5": 12.0,
+      "first_alarm_p95": 19.2
+    },
+    {
+      "policy": "watch estimate",
+      "clinic_id": "US-WEAR-01",
+      "changed_week": 7,
+      "alarm_share": 0.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": null,
+      "first_alarm_p5": null,
+      "first_alarm_p95": null
+    },
+    {
+      "policy": "watch drift",
+      "clinic_id": "US-WEAR-01",
+      "changed_week": 7,
+      "alarm_share": 1.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 9.0,
+      "first_alarm_p5": 9.0,
+      "first_alarm_p95": 9.0
+    },
+    {
+      "policy": "ClinicDrift",
+      "clinic_id": "US-WEAR-01",
+      "changed_week": 7,
+      "alarm_share": 1.0,
+      "false_alarm_share": 0.0,
+      "first_alarm_median": 8.0,
+      "first_alarm_p5": 8.0,
+      "first_alarm_p95": 9.0
+    }
+  ]
+}
