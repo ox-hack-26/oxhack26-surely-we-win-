@@ -23,7 +23,7 @@ python -m addons.run_demo --all --replay                 # all 8 alarms
 python -m pytest -q tests                                # 59 offline tests
 ```
 
-Each run prints the likely cause and the spoken alert text, and writes the cause and the draft
+Each run prints the likely cause and a short alert script, and writes the cause and the draft
 incident report to `addons/out/`.
 
 The dashboard also starts with no keys, in a labelled synthetic demo mode (its numbers are
@@ -62,8 +62,8 @@ early warning, and a clear decision about what to do.
   like the validated ones; a *harm* alarm fires when the scans look normal but it is 90% sure the
   catch rate is below the 80% UK screening standard (for example after a faulty software update).
 - **Act:** when an alarm fires, Gemini suggests the likely cause and drafts an MHRA-style incident
-  report tagged with MIT AI Risk Repository categories, and a short spoken alert for the clinic lead
-  is written to be read aloud by ElevenLabs (built, not yet tested with a live key).
+  report tagged with MIT AI Risk Repository categories, and writes a short alert script for the clinic
+  lead (as text; voicing it is future work).
 
 ## How we built it
 
@@ -72,7 +72,7 @@ early warning, and a clear decision about what to do.
   simulated clinics and weeks.
 - **Storage:** per-clinic, per-week results in Tiger Data.
 - **Cause finding and reports:** Gemini, with rule-based and template fallbacks so the demo works offline.
-- **Spoken alerts:** ElevenLabs text to speech (`addons/voice_alert.py`), with the alert text as a fallback.
+- **Alert script:** a short text alert per alarm (`addons/voice_alert.py`); voicing it is future work.
 - **Dashboard:** Streamlit and Plotly (`dashboard/`), reading weekly results from Tiger Cloud, with an
   explicit mock mode that is labelled as synthetic.
 
@@ -84,9 +84,9 @@ early warning, and a clear decision about what to do.
   validated on.
 - **Expert grades arrive late and are few.** Only about 10% of scans get a grade, 5 to 7 weeks later,
   so a clinic of 50 scans a week has only a handful of graded urgent cases to go on.
-- **Wording.** On a drift alarm the catch rate can't be verified, so the reports and the spoken alert
+- **Wording.** On a drift alarm the catch rate can't be verified, so the reports and the alert script
   must not quote one. We test that every drift output stays silent on it.
-- **Keeping it running offline.** Every Gemini and ElevenLabs step has a rule-based or template
+- **Keeping it running offline.** Every Gemini step has a rule-based or template
   fallback, which carried the demo when the Gemini free-tier quota ran out.
 
 ## Accomplishments that we're proud of
@@ -157,13 +157,6 @@ it model degradation from the software update (confidence 0.8; the clinic's desc
 update) and said to audit the referral cut-off, where the rule-based check guessed a change in patient
 mix (confidence 0.55). The answers are saved in `sample-data/gemini/`, so the demo replays them with no
 API quota.
-
-### Best Use of ElevenLabs
-A spoken alert of under 25 seconds tells a busy clinic lead what changed, why, and the first thing to check.
-Results: the voice step is built in `addons/voice_alert.py`, with a text fallback: every alarm gets
-an alert script, tested offline (including that drift alerts never quote a catch rate), and without a
-key the add-ons skip the audio and keep the text. It has not been tested with a live ElevenLabs key yet,
-so no audio has been generated. [TBD: confirm with a live key or remove]
 
 ### Best Use of Tiger Data
 Scan events go into a Tiger (TimescaleDB) hypertable keyed on time, with a continuous aggregate that

@@ -52,7 +52,7 @@ Have `addons/out/US-WEAR-01_week9_incident_report.md` open in a second window to
 > When the alarm fires, the clinic lead needs to know what to do. Gemini looks at the flagged scans
 > next to typical training scans and names the likely cause, here camera or image quality, with
 > checks to run. It drafts an MHRA-style incident report, tagged with the MIT AI Risk Repository,
-> and writes a short spoken alert: notice it says the catch rate can't be verified rather than
+> and writes a short alert for the clinic lead: notice it says the catch rate can't be verified rather than
 > quoting a number it can't know.
 
 Optional, only if the Arduino has been tested on this laptop beforehand: add `--light` and point at
