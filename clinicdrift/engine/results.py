@@ -103,7 +103,7 @@ def main() -> None:
         "",
         table(
             [[s, f"{(scans['source'] == s).sum():,}" if s != "eyepacs" else f"{((scans['source'] == s) & (scans['split'] == sp)).sum():,} ({sp})", note]
-             for s, sp, note in [("eyepacs", "train", "training (sample)"), ("eyepacs", "val", "validation: threshold and calibration"),
+             for s, sp, note in [("eyepacs", "train", "training"), ("eyepacs", "val", "validation: threshold and calibration"),
                                  ("eyepacs", "test", "held-out scans for the quiet clinics, the switch clinics' early weeks and US-WEAR-01 (worn copies included)"),
                                  ("messidor2", "", "deployment clinics"),
                                  ("aptos", "", "deployment clinics (this copy is 224 px: a low-resolution test, not a population one)"),

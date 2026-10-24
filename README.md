@@ -28,6 +28,7 @@ No scans on your machine? [`sample-data/`](sample-data/README.md) has the clinic
    Smallest first: IDRiD, APTOS, Messidor-2, then EyePACS (6.5 GB). Pass names to fetch only some, e.g. `python scripts/download_data.py aptos idrid`.
 4. For everything else, make a virtual environment (also outside OneDrive) and `pip install -r requirements.txt`. The add-ons have their own `requirements-addons.txt`.
 5. Real model (Sarah, needs a GPU): `python -m clinicdrift.engine.replay`, then `python -m clinicdrift.data.prepare`, `train`, `score` and `report`. Until `score` has run, the engine uses the stand-in.
+6. Run the engine on whichever model is in place: `python -m clinicdrift.engine.pipeline` checks the model's files fit the replay, then reruns estimate, decide, backtest, `docs/results.md` and `sample-data/` in one go. `--check` only checks and prints the replay fingerprint, which must match on any two machines that swap model files.
 
 ## Layout
 
@@ -48,6 +49,7 @@ clinicdrift/
     decide.py    drift-aware belief, grades as they arrive, cost-loss alarm, alarm files
     backtest.py  four monitoring policies compared, plus a review-cost sweep
     results.py   writes docs/results.md, the one source for pitch and Devpost numbers
+    pipeline.py  checks the model files fit, then runs all of the above: python -m clinicdrift.engine.pipeline
 addons/          Vansh: Gemini cause-finding and report, ElevenLabs alert
 db/schema.sql    Sneha: Tiger Data tables
 docs/            hand-off formats

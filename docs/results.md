@@ -16,7 +16,7 @@ At the default costs (£10k per missed urgent case, £150 per unnecessary referr
 
 | Source | Scans scored | Used for |
 | --- | --- | --- |
-| eyepacs | 8,000 (train) | training (sample) |
+| eyepacs | 8,000 (train) | training |
 | eyepacs | 3,401 (val) | validation: threshold and calibration |
 | eyepacs | 3,900 (test) | held-out scans for the quiet clinics, the switch clinics' early weeks and US-WEAR-01 (worn copies included) |
 | messidor2 | 1,600 | deployment clinics |
