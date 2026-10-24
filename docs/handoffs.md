@@ -4,7 +4,7 @@ Everything lives in `$CLINICDRIFT_DATA/processed/`. Change a column here first, 
 
 ## 1. `scans.parquet`: Sarah → Tejas (Sneha loads it into Tiger)
 
-One row per scan, all four sources. Ship APTOS first so Tejas can start; `p_referable` can be empty until the classifier is trained.
+One row per scan, all four sources, plus the worn-camera copies the replay uses. Made by `python -m clinicdrift.data.score`, which writes it last, complete, after `features.npy` and `model.json`: the engine switches from the stand-in to these files as soon as `scans.parquet` exists. Run order: `clinicdrift.engine.replay`, then `clinicdrift.data.prepare`, `train` and `score`.
 
 Start from `clinicdrift.data.sources.load_scans()`. It already has `scan_id`, `source`, `split`, `grade` and `referable`, plus `image_name`, `file` and `row_in_file` for finding the image; add the other columns. `load_image(scan_id)` in the same file returns any scan as a PIL image. Train only on `split == "train"` and tune on `val`. Never train on `test`: the replay uses those scans for the clinics that should stay quiet.
 
@@ -15,20 +15,21 @@ Start from `clinicdrift.data.sources.load_scans()`. It already has `scan_id`, `s
 | `split` | string | `train`, `val` or `test` for EyePACS, split by patient (70/10/20); `deploy` for the other three |
 | `grade` | int 0–4 | Expert grade |
 | `referable` | bool | `grade >= 2`: the patient must be referred |
+| `wear` | float 0–1 | Camera wear applied to this copy; 0 for every untouched scan |
 | `p_referable` | float 0–1 | Classifier's probability that the scan needs referral |
-| `quality` | float 0–1 | Image quality score, higher is better |
-| `brightness` | float 0–1 | Mean greyscale pixel value / 255 |
-| `contrast` | float 0–1 | Standard deviation of greyscale pixels / 255 |
-| `sharpness` | float | Variance of the Laplacian |
+| `quality` | float 0–1 | Image quality: the worst of sharpness, contrast and exposure, scored against the EyePACS training scans. 1 for a typical training scan, about 0.5 for the worst training scans and for the blurry 224 px APTOS copies, 0 for a badly worn camera |
+| `brightness` | float 0–1 | Mean greyscale pixel value / 255, inside the retina (black surround left out) |
+| `contrast` | float 0–1 | Standard deviation of greyscale pixels / 255, inside the retina |
+| `sharpness` | float | Variance of the Laplacian inside the retina, measured after resizing the retina to 512 px so cameras compare fairly |
 | `width`, `height` | int | Original size in pixels |
 
-Worn-camera copies of scans have IDs like `eyepacs-01234@0.40`: the original scan, blurred and darkened to wear level 0.40 by `clinicdrift/data/degrade.py`. `load_image` returns them already worn, and they need their own rows (and a `wear` column, 0 for normal scans), because the model sees a different image.
+Worn-camera copies of scans have IDs like `eyepacs-01234@0.40`: the original scan, blurred and darkened to wear level 0.40 by `clinicdrift/data/degrade.py`. `load_image` returns them already worn, and they need their own rows (and a `wear` column, 0 for normal scans), because the model sees a different image. `clinicdrift.data.prepare` makes a row for every worn copy in `stream.parquet`, so re-run it (then `score`) after changing the replay. A worn copy keeps its original's `split`, `grade` and `referable`.
 
-Image features go in `features/<source>.npy`: float32, shape `(n_scans, d)`, rows in the same order as that source's rows in `scans.parquet`.
+Image features go in `features.npy`: float16, shape `(n_rows, 768)`, one array with rows in the same order as `scans.parquet`. They are the classifier's pooled features, so they change with the things it looks at.
 
 Until Sarah's files exist, `python -m clinicdrift.data.standin` writes a stand-in `scans.parquet`, `features.npy` (one array, same row order) and `model.json` under `processed/standin/`: frozen ImageNet ResNet-50 features plus a logistic regression, for the ~19,000 scans the engine needs. The engine switches to Sarah's files as soon as `processed/scans.parquet` exists.
 
-When the classifier is trained, also write `model.json` with `referral_threshold`, the `p_referable` cut-off for referring a scan. Pick it on `val` so the model catches 90% of referable cases: screening would rather over-refer than miss sight-threatening disease. Add `val_sensitivity` and `val_specificity` at that threshold.
+When the classifier is trained, also write `model.json` with `referral_threshold`, the `p_referable` cut-off for referring a scan. Pick it on `val` so the model catches 90% of referable cases: screening would rather over-refer than miss sight-threatening disease. Add `val_sensitivity` and `val_specificity` at that threshold. `score.py` also adds `val_auc`, the same three on the held-out EyePACS `test` scans (`test_*`), and the calibration `temperature`. `python -m clinicdrift.data.report` writes the accuracy at each site to `docs/model-report.md`.
 
 ## 2. `stream.parquet` and `clinics.json`: Tejas's replay (Sneha loads them into Tiger)
 
