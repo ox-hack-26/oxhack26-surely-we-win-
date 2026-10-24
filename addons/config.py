@@ -13,7 +13,7 @@ def _env(name: str, default: str = "") -> str:
 
 
 GEMINI_API_KEY = _env("GEMINI_API_KEY")
-GEMINI_MODEL = _env("GEMINI_MODEL", "gemini-2.5-flash") or "gemini-2.5-flash"
+GEMINI_MODEL = _env("GEMINI_MODEL", "gemini-3.8-flash") or "gemini-3.8-flash"
 ELEVENLABS_API_KEY = _env("ELEVENLABS_API_KEY")
 ELEVENLABS_VOICE_ID = _env("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb") or "JBFqnCBsd6RMkjVDRZzb"
 ELEVENLABS_MODEL = _env("ELEVENLABS_MODEL", "eleven_multilingual_v2") or "eleven_multilingual_v2"
