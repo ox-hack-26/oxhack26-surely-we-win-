@@ -1,0 +1,6 @@
+[
+  {"scan_id": "messidor2-00042", "source": "messidor2", "split": "deploy", "p_referable": 0.21, "quality": 0.52, "brightness": 0.36, "contrast": 0.20, "sharpness": 41.0, "width": 1440, "height": 960},
+  {"scan_id": "messidor2-00057", "source": "messidor2", "split": "deploy", "p_referable": 0.17, "quality": 0.56, "brightness": 0.38, "contrast": 0.22, "sharpness": 47.0, "width": 1440, "height": 960},
+  {"scan_id": "eyepacs-01234", "source": "eyepacs", "split": "train", "p_referable": 0.61, "quality": 0.81, "brightness": 0.47, "contrast": 0.27, "sharpness": 112.0, "width": 2592, "height": 1944},
+  {"scan_id": "eyepacs-05678", "source": "eyepacs", "split": "train", "p_referable": 0.24, "quality": 0.85, "brightness": 0.46, "contrast": 0.28, "sharpness": 118.0, "width": 2592, "height": 1944}
+]

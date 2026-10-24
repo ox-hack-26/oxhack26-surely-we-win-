@@ -1,10 +1,10 @@
 import json
 import pandas as pd
 import pytest
-from clinicdrift.mock_data import demo_weekly
-from clinicdrift.contracts import visible_weekly,validate_weekly,observed_sensitivity
-from clinicdrift.decisions import demo_decision
-from clinicdrift.replay import alert_json
+from ui.mock_data import demo_weekly
+from ui.contracts import visible_weekly,validate_weekly,observed_sensitivity
+from ui.decisions import demo_decision
+from ui.replay import alert_json
 
 def test_deterministic_mock():
     pd.testing.assert_frame_equal(demo_weekly(),demo_weekly())
@@ -46,7 +46,7 @@ def test_sensitivity_missing_labels_and_zero_positive():
     assert observed_sensitivity(scans,'2026-10-26T00:00:00Z')==(None,0)
 
 def test_database_schema_exists():
-    from clinicdrift.storage import SQL_PATH
+    from ui.storage import SQL_PATH
     s=SQL_PATH.read_text()
     for name in ['scans','weekly_monitoring','alerts','investigations']:
         assert f'CREATE TABLE IF NOT EXISTS {name}' in s

@@ -7,7 +7,11 @@ Belief about a clinic's catch rate is a Beta distribution built from:
   3. expert grades that have arrived by then, from the clinic's last 8 weeks of scans.
 The decision is cost-loss: pull the AI if the expected extra harm of carrying on until grades
 would show the problem (the horizon) costs more than a review. Costs are illustrative; they
-are the dashboard's sliders.
+are the dashboard's sliders. Two kinds of alarm:
+  drift  the scans no longer look validated (trust below 0.5), so the catch rate can't be verified;
+  harm   the scans look validated but we are at least CONFIDENCE sure the catch rate is below the
+         screening standard (MIN_CATCH_RATE). Without that evidence test, weekly noise of a few
+         points was enough to pull a healthy AI, because a 4-point shortfall already outweighs a review.
 
 Writes processed/weekly.parquet and one processed/alarms/<clinic>_week<NN>.json each time an
 alarm starts, in the format addons/alarm_schema.py reads.
@@ -22,13 +26,15 @@ import pandas as pd
 from scipy import stats
 
 from clinicdrift.config import PROCESSED_DIR
-from clinicdrift.engine.estimate import Reference, load_inputs
+from clinicdrift.engine.estimate import Reference, load_inputs, referral_thresholds
 
 DRIFT_TRUSTED = 0.7    # below this drift_auc the label-free estimate is fully trusted
 DRIFT_UNTRUSTED = 0.9  # above this it is ignored
 POOL_WEEKS = 3         # label-free estimates pooled over this many weeks
 GRADE_WINDOW = 8       # grades count if their scan was taken in the last this-many weeks
 FLAGGED = 6            # scans attached to an alarm for Gemini to look at
+MIN_CATCH_RATE = 0.80  # UK (Exeter / British Diabetic Association) screening standard: sensitivity of at least 80%
+CONFIDENCE = 0.90      # a harm alarm needs this much belief that the catch rate is below that standard
 
 
 @dataclass(frozen=True)
@@ -89,7 +95,9 @@ def decide_clinic(weeks: pd.DataFrame, graded: pd.DataFrame, ref: dict, costs: C
         weekly_harm = (costs.missed_case * n_cases * (ref["catch_rate"] - catch)
                        + costs.false_referral * (referred - catch * n_cases - usual_false))
         harm = costs.horizon_weeks * weekly_harm
-        alarm = harm > costs.review
+        below_standard = float(stats.beta.cdf(MIN_CATCH_RATE, a, b))
+        drifted = t < 0.5
+        alarm = harm > costs.review and (drifted or below_standard >= CONFIDENCE)
         out.append({
             "trust": t,
             "graded_cases": n_graded,
@@ -100,8 +108,9 @@ def decide_clinic(weeks: pd.DataFrame, graded: pd.DataFrame, ref: dict, costs: C
             "belief_cases": n_cases,
             "belief_missed": n_cases * (1 - catch),
             "expected_harm": harm,
+            "p_below_standard": below_standard,
             "alarm_this_week": bool(alarm),
-            "alarm_reason": ("drift" if t < 0.5 else "harm") if alarm else None,
+            "alarm_reason": ("drift" if drifted else "harm") if alarm else None,
         })
     decided = pd.DataFrame(out)
     # An alarm pulls the AI for review, so it stays on until someone has reviewed it. Without
@@ -156,10 +165,10 @@ def write_alarms(weekly, seen, scans, features, model, ref, costs, clinics) -> l
             "expected_missed_cases": row.belief_missed,
             "expected_harm": row.expected_harm,
             "review_cost": costs.review,
-            "referral_threshold": threshold,
+            "referral_threshold": row.referral_threshold,  # the one this clinic used that week
             "alarm_reason": row.alarm_reason,
             "drift_auc": row.drift_auc,
-            "flagged_scan_stats": scan_stats(week_scans, threshold),
+            "flagged_scan_stats": scan_stats(week_scans, row.referral_threshold),
             "training_scan_stats": scan_stats(train, threshold),
             "flagged_scan_ids": week_scans["scan_id"].to_numpy()[np.argsort(-dist)[:FLAGGED]].tolist(),
             "reference_scan_ids": typical,
@@ -177,7 +186,7 @@ def run(costs: Costs = Costs(), write: bool = True) -> pd.DataFrame:
     weekly = pd.read_parquet(PROCESSED_DIR / "weekly_estimates.parquet")
     stream = pd.read_parquet(PROCESSED_DIR / "stream.parquet")
     seen = stream.merge(scans.drop(columns="wear", errors="ignore"), on=["scan_id", "source"], validate="one_to_one")
-    seen["referred"] = seen["p_referable"] >= model["referral_threshold"]
+    seen["referred"] = seen["p_referable"].to_numpy() >= referral_thresholds(seen, scans, model)
     graded = seen[seen["graded_at"].notna()]
 
     decided = pd.concat(
@@ -192,7 +201,8 @@ def run(costs: Costs = Costs(), write: bool = True) -> pd.DataFrame:
     written = write_alarms(decided, seen, scans, features, model, ref, costs, clinics)
     (PROCESSED_DIR / "decision_settings.json").write_text(
         json.dumps({"costs": asdict(costs), "reference": ref, "drift_trusted": DRIFT_TRUSTED,
-                    "drift_untrusted": DRIFT_UNTRUSTED}, indent=2), encoding="utf-8")
+                    "drift_untrusted": DRIFT_UNTRUSTED, "min_catch_rate": MIN_CATCH_RATE,
+                    "confidence": CONFIDENCE}, indent=2), encoding="utf-8")
     print(f"Wrote weekly.parquet ({len(decided)} clinic-weeks) and {len(written)} alarm files")
     return decided
 

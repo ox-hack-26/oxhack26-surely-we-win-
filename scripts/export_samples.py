@@ -43,6 +43,9 @@ def main() -> None:
     pd.read_parquet(PROCESSED_DIR / "backtest_sweep.parquet").to_csv(OUT / "backtest_sweep.csv", index=False)
     for name in ("clinics.json", "decision_settings.json", "backtest_summary.json"):
         shutil.copy(PROCESSED_DIR / name, OUT / name)
+    if (PROCESSED_DIR / "robustness_summary.json").exists():  # ranges across redraws of the grades
+        shutil.copy(PROCESSED_DIR / "robustness_summary.json", OUT / "robustness_summary.json")
+        pd.read_parquet(PROCESSED_DIR / "robustness_sweep.parquet").to_csv(OUT / "robustness_sweep.csv", index=False)
     (OUT / "model.json").write_text(json.dumps(model, indent=2), encoding="utf-8")
 
     alarms_out = OUT / "alarms"

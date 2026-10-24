@@ -8,6 +8,10 @@ addons/out/
 *.parquet
 *.npy
 
+# add-on outputs
+addons/out/
+addons/cache/
+
 # python
 __pycache__/
 *.pyc

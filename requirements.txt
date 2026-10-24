@@ -4,6 +4,7 @@ pyarrow
 pillow
 opencv-python-headless
 scikit-learn
+matplotlib
 torch
 torchvision
 timm

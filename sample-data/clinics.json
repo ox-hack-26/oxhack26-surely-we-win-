@@ -12,6 +12,7 @@
     ],
     "scans_per_week": 50,
     "wear_from_week": null,
+    "update_from_week": null,
     "switch_week": null
   },
   {
@@ -27,6 +28,7 @@
     ],
     "scans_per_week": 50,
     "wear_from_week": null,
+    "update_from_week": null,
     "switch_week": null
   },
   {
@@ -46,6 +48,7 @@
     ],
     "scans_per_week": 50,
     "wear_from_week": null,
+    "update_from_week": null,
     "switch_week": 9
   },
   {
@@ -65,6 +68,7 @@
     ],
     "scans_per_week": 50,
     "wear_from_week": null,
+    "update_from_week": null,
     "switch_week": 11
   },
   {
@@ -80,6 +84,7 @@
     ],
     "scans_per_week": 50,
     "wear_from_week": null,
+    "update_from_week": null,
     "switch_week": null
   },
   {
@@ -95,6 +100,7 @@
     ],
     "scans_per_week": 50,
     "wear_from_week": null,
+    "update_from_week": null,
     "switch_week": null
   },
   {
@@ -110,6 +116,7 @@
     ],
     "scans_per_week": 50,
     "wear_from_week": null,
+    "update_from_week": null,
     "switch_week": null
   },
   {
@@ -125,6 +132,7 @@
     ],
     "scans_per_week": 25,
     "wear_from_week": null,
+    "update_from_week": null,
     "switch_week": null
   },
   {
@@ -140,6 +148,23 @@
     ],
     "scans_per_week": 50,
     "wear_from_week": 7,
+    "update_from_week": null,
+    "switch_week": null
+  },
+  {
+    "clinic_id": "US-UPD-01",
+    "site": "EyePACS, faulty software update",
+    "country": "United States",
+    "note": "Same camera and scans throughout, but at week 10 a vendor update raises the referral cut-off",
+    "segments": [
+      {
+        "source": "eyepacs",
+        "first_week": 1
+      }
+    ],
+    "scans_per_week": 50,
+    "wear_from_week": null,
+    "update_from_week": 10,
     "switch_week": null
   }
 ]
