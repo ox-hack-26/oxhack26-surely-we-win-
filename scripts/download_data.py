@@ -26,7 +26,7 @@ SOURCES = {
 TREE_URL = "https://huggingface.co/api/datasets/{repo}/tree/main?recursive=true"
 FILE_URL = "https://huggingface.co/datasets/{repo}/resolve/main/{path}"
 CHUNK = 1 << 20
-RETRIES = 5
+RETRIES = 10  # each retry resumes, so flaky wifi still makes progress
 
 
 def list_files(repo: str) -> list[dict]:
@@ -55,6 +55,8 @@ def fetch(url: str, dest: Path, size: int) -> None:
                     rate = (done - have) / max(time.time() - start, 1e-6) / 1e6
                     print(f"    {done / 1e6:,.0f} / {size / 1e6:,.0f} MB  ({rate:.1f} MB/s)", flush=True)
                     next_report += 100 * CHUNK
+    if done != size:  # the server closed the connection early; the retry resumes from here
+        raise ConnectionError(f"connection closed at {done / 1e6:,.0f} of {size / 1e6:,.0f} MB")
 
 
 def download(name: str, repo: str) -> None:
