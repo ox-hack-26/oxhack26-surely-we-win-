@@ -31,8 +31,10 @@ The files each person hands to the next are defined in [docs/handoffs.md](docs/h
 ```
 clinicdrift/
   config.py      where the data folder is; reads .env
-  data/          Sarah: load scans, image quality, image features, classifier
-  engine/        Tejas: catch-rate estimate, alarm rule, replay, backtest
+  data/          Sarah: image quality, image features, classifier
+    sources.py   the shared scan list (scan IDs, splits, grades) and load_image
+  engine/        Tejas: catch-rate estimate, alarm rule, backtest
+    replay.py    simulated clinics: python -m clinicdrift.engine.replay
 addons/          Vansh: Gemini cause-finding and report, ElevenLabs alert
 db/schema.sql    Sneha: Tiger Data tables
 docs/            hand-off formats
