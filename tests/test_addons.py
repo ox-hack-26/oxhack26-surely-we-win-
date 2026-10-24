@@ -222,9 +222,12 @@ def test_non_drift_wording_unchanged(alarm):
 @pytest.mark.parametrize("path", SAMPLE_ALARMS, ids=lambda p: p.stem)
 def test_sample_alarms_run_offline(path):
     summary = run(path)
-    assert summary["alarm_reason"] == "drift"
-    assert "can't be verified" in summary["alert_script"]
-    assert "%" not in summary["alert_script"]
+    assert summary["alarm_reason"] == load_alarm(path).alarm_reason
+    if summary["alarm_reason"] == "drift":
+        assert "can't be verified" in summary["alert_script"]
+        assert "%" not in summary["alert_script"]
+    else:
+        assert "can't be verified" not in summary["alert_script"]
 
 
 @pytest.mark.parametrize("path", SAMPLE_ALARMS, ids=lambda p: p.stem)
