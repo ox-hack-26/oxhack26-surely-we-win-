@@ -122,6 +122,33 @@ def test_population_shift_when_images_match_training(alarm):
     assert cause.category == "patient population shift"
 
 
+def test_referral_change_leads_the_cause(drift_alarm):
+    cause = rule_cause(drift_alarm)
+    assert cause.likely_cause.startswith("The AI is referring more patients than usual (referral rate 0.685 -> 0.86, +26%).")
+    assert cause.category == "camera or image quality"  # quality fell 61%, so the images still explain it
+    assert cause.confidence == 0.7
+
+
+def test_worn_camera_stays_camera():
+    wear = load_alarm(Path(__file__).parents[1] / "sample-data" / "alarms" / "US-WEAR-01_week09.json")
+    cause = rule_cause(wear)
+    assert cause.category == "camera or image quality"
+    assert not cause.likely_cause.startswith("The AI is referring")
+
+
+def test_resolution_alone_is_not_a_camera_signal(alarm):
+    training = alarm.training_scan_stats
+    flagged = training.model_copy(update={"n_scans": 64, "mean_resolution_px": 1440})
+    cause = rule_cause(alarm, Evidence(flagged=flagged, reference=training, n_scans=64))
+    assert cause.category == "model degradation"
+    assert any("context only" in e for e in cause.evidence)
+
+
+def test_rule_confidence_is_capped(alarm):
+    assert all(rule_cause(load_alarm(p)).confidence <= 0.7 for p in SAMPLE_ALARMS)
+    assert rule_cause(alarm).confidence <= 0.7
+
+
 def test_too_few_scans_is_unknown(alarm):
     flagged = alarm.flagged_scan_stats.model_copy(update={"n_scans": 5})
     a = alarm.model_copy(update={"flagged_scan_stats": flagged})
