@@ -5,8 +5,6 @@ can fall back to their offline path.
 """
 
 import json
-import mimetypes
-from pathlib import Path
 from typing import Optional
 
 from . import config
@@ -24,20 +22,17 @@ def _client():
     return genai.Client(api_key=config.GEMINI_API_KEY)
 
 
-def _image_parts(image_paths):
+def _image_parts(images):
+    """images: (caption, bytes, mime) tuples -> caption text followed by each image."""
     from google.genai import types
 
     parts = []
-    for p in (image_paths or [])[:MAX_IMAGES]:
-        path = Path(p)
-        if not path.is_file():
-            continue
-        mime = mimetypes.guess_type(path.name)[0] or "image/jpeg"
-        parts.append(types.Part.from_bytes(data=path.read_bytes(), mime_type=mime))
+    for caption, data, mime in (images or [])[:MAX_IMAGES]:
+        parts += [caption, types.Part.from_bytes(data=data, mime_type=mime)]
     return parts
 
 
-def generate_json(prompt: str, schema: dict, system: str, image_paths=None) -> Optional[dict]:
+def generate_json(prompt: str, schema: dict, system: str, images=None) -> Optional[dict]:
     """Ask Gemini for JSON matching `schema`. Returns the parsed dict or None."""
     if not available():
         return None
@@ -46,7 +41,7 @@ def generate_json(prompt: str, schema: dict, system: str, image_paths=None) -> O
 
         resp = _client().models.generate_content(
             model=config.GEMINI_MODEL,
-            contents=[prompt] + _image_parts(image_paths),
+            contents=[prompt] + _image_parts(images),
             config=types.GenerateContentConfig(
                 system_instruction=system,
                 response_mime_type="application/json",
