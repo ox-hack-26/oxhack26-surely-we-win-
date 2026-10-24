@@ -22,6 +22,8 @@ Start from `clinicdrift.data.sources.load_scans()`. It already has `scan_id`, `s
 | `sharpness` | float | Variance of the Laplacian |
 | `width`, `height` | int | Original size in pixels |
 
+Worn-camera copies of scans have IDs like `eyepacs-01234@0.40`: the original scan, blurred and darkened to wear level 0.40 by `clinicdrift/data/degrade.py`. `load_image` returns them already worn, and they need their own rows (and a `wear` column, 0 for normal scans), because the model sees a different image.
+
 Image features go in `features/<source>.npy`: float32, shape `(n_scans, d)`, rows in the same order as that source's rows in `scans.parquet`.
 
 Until Sarah's files exist, `python -m clinicdrift.data.standin` writes a stand-in `scans.parquet`, `features.npy` (one array, same row order) and `model.json` under `processed/standin/`: frozen ImageNet ResNet-50 features plus a logistic regression, for the ~19,000 scans the engine needs. The engine switches to Sarah's files as soon as `processed/scans.parquet` exists.
@@ -30,7 +32,7 @@ When the classifier is trained, also write `model.json` with `referral_threshold
 
 ## 2. `stream.parquet` and `clinics.json`: Tejas's replay (Sneha loads them into Tiger)
 
-Made by `python -m clinicdrift.engine.replay`. 8 simulated clinics see 7,500 scans over 20 weeks from 5 January 2026, each scan used once. About 10% of scans get an expert grade, 5 to 7 weeks after the scan.
+Made by `python -m clinicdrift.engine.replay`. 9 simulated clinics see 8,500 scans over 20 weeks from 5 January 2026, each scan used once. About 10% of scans get an expert grade, 5 to 7 weeks after the scan.
 
 | Column | Type | Meaning |
 | --- | --- | --- |
@@ -39,15 +41,17 @@ Made by `python -m clinicdrift.engine.replay`. 8 simulated clinics see 7,500 sca
 | `source` | string | Dataset the scan came from |
 | `week` | int | Week number, 1 = first week |
 | `week_start` | date | Monday the week starts |
+| `wear` | float 0–1 | Camera wear applied to this scan (0 for every clinic but `US-WEAR-01`) |
 | `ts` | timestamp | When the scan was taken (simulated, weekdays 08:00–18:00) |
 | `graded_at` | timestamp or null | When its expert grade arrives. The engine must not use `grade` before this time |
 
-`clinics.json` lists each clinic: `clinic_id`, `site`, `country`, `note`, `segments` (source and first week), `scans_per_week`, and `switch_week` (null unless the clinic gets a new camera). The dashboard's clinic list comes from here.
+`clinics.json` lists each clinic: `clinic_id`, `site`, `country`, `note`, `segments` (source and first week), `scans_per_week`, `switch_week` (null unless the clinic gets a new camera) and `wear_from_week` (null unless its camera wears out). The dashboard's clinic list comes from here.
 
 | Clinic | Scans | What should happen |
 | --- | --- | --- |
 | `US-EYE-01`, `US-EYE-02` | Held-out EyePACS, 50 a week | Same as training: the alarm stays quiet |
-| `SW-MES-01` | EyePACS, then Messidor-2 from week 9 | The demo: fine, then a new camera, then the alarm |
+| `US-WEAR-01` | Held-out EyePACS; the camera wears from week 7 (blurrier and darker each week) | The main demo: the AI misses up to 9 urgent cases a week by week 20 while its own confidence says all is well; drift flags it by week 8–9 |
+| `SW-MES-01` | EyePACS, then Messidor-2 from week 9 | A new camera: the AI over-refers healthy patients rather than missing cases |
 | `SW-APT-01` | EyePACS, then APTOS from week 11 | A second camera switch |
 | `FR-MES-01` | Messidor-2 from day one | Different from the start |
 | `IN-APT-01`, `IN-APT-02` | APTOS from day one | Different from the start |

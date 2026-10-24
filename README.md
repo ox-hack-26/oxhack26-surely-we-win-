@@ -34,6 +34,7 @@ clinicdrift/
   data/          Sarah: image quality, image features, classifier
     sources.py   the shared scan list (scan IDs, splits, grades) and load_image
     standin.py   stand-in model until Sarah's lands: python -m clinicdrift.data.standin
+    degrade.py   simulated camera wear (blur + darkening) for the US-WEAR-01 clinic
   engine/        Tejas: catch-rate estimate, alarm rule, backtest
     replay.py    simulated clinics: python -m clinicdrift.engine.replay
 addons/          Vansh: Gemini cause-finding and report, ElevenLabs alert

@@ -91,17 +91,23 @@ def load_scans(refresh: bool = False) -> pd.DataFrame:
 
 
 def load_image(scan_id: str):
-    """The scan as a PIL image. Reads only the row group that holds it."""
+    """The scan as an RGB PIL image, worn-camera copies ('<scan_id>@<level>') included.
+
+    Reads only the row group that holds it.
+    """
     from PIL import Image
 
+    from clinicdrift.data.degrade import degrade, split_id
+
+    base_id, level = split_id(scan_id)
     scans = load_scans().set_index("scan_id")
-    row = scans.loc[scan_id]
+    row = scans.loc[base_id]
     pf = pq.ParquetFile(row["file"])
     offset = int(row["row_in_file"])
     for group in range(pf.num_row_groups):
         n = pf.metadata.row_group(group).num_rows
         if offset < n:
             cell = pf.read_row_group(group, columns=["image"]).column("image")[offset].as_py()
-            return Image.open(io.BytesIO(cell["bytes"]))
+            return degrade(Image.open(io.BytesIO(cell["bytes"])).convert("RGB"), level)
         offset -= n
     raise IndexError(f"{scan_id}: row {row['row_in_file']} is past the end of {row['file']}")

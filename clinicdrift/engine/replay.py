@@ -1,9 +1,10 @@
 """Replay the scans as if they arrived at screening clinics week by week.
 
 Writes processed/stream.parquet (one row per scan a clinic saw) and processed/clinics.json.
-Every scan is used at most once. A clinic draws from one source, or switches source at a
-given week to mimic a new camera arriving. Only a sample of scans gets an expert grade,
-weeks later: that delay is the gap ClinicDrift fills.
+Every scan is used at most once. A clinic draws from one source, switches source at a given
+week to mimic a new camera arriving, or keeps its camera while it slowly wears out (scans get
+blurrier and darker, see clinicdrift/data/degrade.py). Only a sample of scans gets an expert
+grade, weeks later: that delay is the gap ClinicDrift fills.
 
     python -m clinicdrift.engine.replay
 """
@@ -14,6 +15,7 @@ import numpy as np
 import pandas as pd
 
 from clinicdrift.config import PROCESSED_DIR
+from clinicdrift.data.degrade import degraded_id
 from clinicdrift.data.sources import TRAINING_SOURCE, load_scans
 
 SEED = 2026
@@ -31,6 +33,13 @@ class Clinic:
     note: str
     segments: tuple[tuple[str, int], ...]  # (source, first week it supplies scans)
     scans_per_week: int = 50
+    wear_from_week: int | None = None      # camera wear starts here and reaches full strength in the last week
+
+    def wear(self, week: int) -> float:
+        """Camera wear level 0-1 in a given week."""
+        if self.wear_from_week is None or week < self.wear_from_week:
+            return 0.0
+        return (week - self.wear_from_week + 1) / (N_WEEKS - self.wear_from_week + 1)
 
 
 CLINICS = (
@@ -50,6 +59,10 @@ CLINICS = (
            (("aptos", 1),)),
     Clinic("IN-IDR-01", "IDRiD", "India", "Small clinic: fewer scans a week, so wider uncertainty",
            (("idrid", 1),), scans_per_week=25),
+    # Last, so adding it left the other clinics' scans unchanged.
+    Clinic("US-WEAR-01", "EyePACS, wearing camera", "United States",
+           "Same camera throughout, but from week 7 its scans get blurrier and darker every week",
+           (("eyepacs", 1),), wear_from_week=7),
 )
 
 
@@ -72,8 +85,10 @@ def build_stream(scans: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
                 raise ValueError(f"{clinic.clinic_id} needs {need} {src} scans but only {len(pools[src])} are left")
             drawn, pools[src] = pools[src][:need], pools[src][need:]
             for i, week in enumerate(np.repeat(weeks, clinic.scans_per_week)):
-                rows.append((drawn[i], clinic.clinic_id, src, int(week)))
-    stream = pd.DataFrame(rows, columns=["scan_id", "clinic_id", "source", "week"])
+                wear = clinic.wear(int(week))
+                scan_id = degraded_id(drawn[i], wear) if wear > 0 else drawn[i]
+                rows.append((scan_id, clinic.clinic_id, src, int(week), wear))
+    stream = pd.DataFrame(rows, columns=["scan_id", "clinic_id", "source", "week", "wear"])
 
     # Scans happen on weekdays, 08:00 to 18:00.
     stream["week_start"] = FIRST_MONDAY + pd.to_timedelta((stream["week"] - 1) * 7, unit="D")

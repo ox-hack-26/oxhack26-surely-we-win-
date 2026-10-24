@@ -8,10 +8,11 @@ matches docs/handoffs.md, under processed/standin/:
     features.npy    float16 image features, same row order
     model.json      referral_threshold and validation scores
 
-Scores only what the engine needs: every scan the replay uses, all of EyePACS 'val', and a
-sample of EyePACS 'train'. Runs on the GPU when there is one.
+Scores only what the engine needs: every scan the replay uses (worn-camera copies included),
+all of EyePACS 'val', and a sample of EyePACS 'train'. Runs on the GPU when there is one.
+Re-running only embeds scans it hasn't seen, so a new replay clinic costs seconds.
 
-    python -m clinicdrift.data.standin           # embed (slow, once) then fit
+    python -m clinicdrift.data.standin           # embed any new scans, then fit
     python -m clinicdrift.data.standin --refit   # fit again from saved features
 """
 import argparse
@@ -27,6 +28,7 @@ from PIL import Image
 from scipy import ndimage
 
 from clinicdrift.config import PROCESSED_DIR
+from clinicdrift.data.degrade import degrade, split_id
 from clinicdrift.data.sources import load_scans
 
 OUT_DIR = PROCESSED_DIR / "standin"
@@ -39,12 +41,13 @@ MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)[:, None, None]
 STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)[:, None, None]
 
 
-def preprocess(blob: bytes) -> tuple[np.ndarray, dict]:
-    """Crop to the retina, measure quality, and return a normalised 224x224 array."""
+def preprocess(item: tuple[bytes, float]) -> tuple[np.ndarray, dict]:
+    """Apply any camera wear, crop to the retina, measure quality, and return a normalised 224x224 array."""
+    blob, wear = item
     img = Image.open(io.BytesIO(blob))
     width, height = img.size
     img.draft("RGB", (THUMB, THUMB))  # JPEGs decode straight at reduced size
-    img = img.convert("RGB")
+    img = degrade(img.convert("RGB"), wear)
     scale = THUMB / max(img.size)  # up or down, so a low-resolution camera reads as blurry
     img = img.resize((round(img.width * scale), round(img.height * scale)), Image.BILINEAR)
     rgb = np.asarray(img, dtype=np.float32) / 255
@@ -74,27 +77,37 @@ def preprocess(blob: bytes) -> tuple[np.ndarray, dict]:
 
 
 def pick_scans() -> pd.DataFrame:
+    """Every scan to score, one row each; worn-camera copies point at their original's file and row."""
     scans = load_scans()
-    stream = pd.read_parquet(PROCESSED_DIR / "stream.parquet", columns=["scan_id"])
     train = scans[(scans["source"] == "eyepacs") & (scans["split"] == "train")]
-    chosen = set(stream["scan_id"])
-    chosen |= set(scans.loc[(scans["source"] == "eyepacs") & (scans["split"] == "val"), "scan_id"])
-    chosen |= set(train.sample(TRAIN_SAMPLE, random_state=SEED)["scan_id"])
-    return scans[scans["scan_id"].isin(chosen)].reset_index(drop=True)
+    plain = set(scans.loc[(scans["source"] == "eyepacs") & (scans["split"] == "val"), "scan_id"])
+    plain |= set(train.sample(TRAIN_SAMPLE, random_state=SEED)["scan_id"])
+    wanted = pd.DataFrame({"scan_id": sorted(plain)})
+    stream_ids = pd.read_parquet(PROCESSED_DIR / "stream.parquet", columns=["scan_id"])["scan_id"]
+    wanted = pd.concat([wanted, stream_ids.to_frame()]).drop_duplicates("scan_id", ignore_index=True)
+
+    split = wanted["scan_id"].map(split_id)
+    wanted["base_id"] = [base for base, _ in split]
+    wanted["wear"] = [wear for _, wear in split]
+    picked = wanted.merge(scans.rename(columns={"scan_id": "base_id"}), on="base_id", validate="many_to_one")
+    return picked.drop(columns="base_id")
 
 
 def iter_blobs(picked: pd.DataFrame):
-    """(row index in picked, image bytes), one parquet row group at a time to keep memory low."""
+    """(row index in picked, (image bytes, wear)), one parquet row group at a time to keep memory low."""
     for path, rows in picked.groupby("file"):
         pf = pq.ParquetFile(path)
-        wanted = dict(zip(rows["row_in_file"], rows.index))
+        wanted: dict[int, list[int]] = {}
+        for row_in_file, index in zip(rows["row_in_file"], rows.index):
+            wanted.setdefault(row_in_file, []).append(index)
         start = 0
         for group in range(pf.num_row_groups):
             n = pf.metadata.row_group(group).num_rows
             hits = [r for r in range(start, start + n) if r in wanted]
             if hits:
                 images = pf.read_row_group(group, columns=["image"]).column("image")
-                yield [(wanted[r], images[r - start].as_py()["bytes"]) for r in hits]
+                yield [(index, (images[r - start].as_py()["bytes"], picked.at[index, "wear"]))
+                       for r in hits for index in wanted[r]]
             start += n
 
 
@@ -178,18 +191,28 @@ def main() -> None:
     args = parser.parse_args()
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    if args.refit:
-        scored = pd.read_parquet(OUT_DIR / "scans.parquet")
-        features = np.load(OUT_DIR / "features.npy")
-    else:
+    measured = ["scan_id", "source", "split", "grade", "referable", "wear",
+                "brightness", "contrast", "sharpness", "width", "height"]
+    have = OUT_DIR / "scans.parquet"
+    scored = pd.read_parquet(have) if have.exists() else pd.DataFrame(columns=measured)
+    features = np.load(OUT_DIR / "features.npy") if have.exists() else np.zeros((0, 2048), np.float16)
+    if "wear" not in scored:  # files from before camera wear existed
+        scored["wear"] = 0.0
+    scored = scored[measured]
+
+    if not args.refit:
         picked = pick_scans()
-        features, stats = embed(picked)
-        scored = pd.concat([picked, stats], axis=1)
-        np.save(OUT_DIR / "features.npy", features)
+        new = picked[~picked["scan_id"].isin(scored["scan_id"])].reset_index(drop=True)
+        if len(new):
+            new_features, stats = embed(new)
+            scored = pd.concat([scored, pd.concat([new, stats], axis=1)[measured]], ignore_index=True)
+            features = np.vstack([features, new_features])
+            np.save(OUT_DIR / "features.npy", features)
+        else:
+            print("No new scans to embed", flush=True)
 
     scored, model_info = fit(scored, features)
-    columns = ["scan_id", "source", "split", "grade", "referable", "p_referable", "quality",
-               "brightness", "contrast", "sharpness", "width", "height"]
+    columns = measured[:5] + ["p_referable", "quality"] + measured[5:]
     scored[columns].to_parquet(OUT_DIR / "scans.parquet", index=False)
     (OUT_DIR / "model.json").write_text(json.dumps(model_info, indent=2), encoding="utf-8")
     print(json.dumps(model_info, indent=2))
