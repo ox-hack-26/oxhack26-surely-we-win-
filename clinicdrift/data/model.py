@@ -5,12 +5,13 @@ regression on the 0-4 grade that only helps training. Its pooled features are th
 the engine uses to tell how different a clinic's scans look from training.
 """
 import math
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import timm
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
 
 from clinicdrift.config import DATA_DIR
 from clinicdrift.data.prepare import open_cache
@@ -18,7 +19,7 @@ from clinicdrift.data.prepare import open_cache
 ARCH = "convnext_tiny.in12k_ft_in1k_384"
 MODEL_FILE = DATA_DIR / "models" / "referral.pt"
 BATCH = 48
-WORKERS = 6
+PREFETCH = 4  # batches read ahead while the GPU works
 
 
 def build_model(pretrained: bool) -> torch.nn.Module:
@@ -31,26 +32,40 @@ def load_model(device: str = "cuda") -> torch.nn.Module:
     return model.to(device).eval().to(memory_format=torch.channels_last)
 
 
-class Crops(Dataset):
-    """Rows of the crop cache, with optional per-row targets. Opens the memmap lazily, once per worker."""
+def batches(n_rows: int, rows: np.ndarray, *targets: np.ndarray, shuffle_seed: int | None = None):
+    """Batches of (uint8 crops (B, H, W, 3), *targets) for these cache rows, read ahead on threads.
 
-    def __init__(self, n_scans: int, rows: np.ndarray, *targets: np.ndarray):
-        self.n_scans, self.rows, self.targets = n_scans, rows, targets
-        self.cache = None
+    targets are per cache row (length n_rows), so they are indexed the same way as the cache.
 
-    def __len__(self) -> int:
-        return len(self.rows)
+    In order, every row, unless shuffle_seed is given: then shuffled, dropping the last partial batch.
+    Threads, not DataLoader worker processes: on Windows each worker takes ~20 s to start, and the
+    cache is a memmap the OS already holds in RAM, so reading it is a memcpy.
+    """
+    cache = open_cache(n_rows)
+    if shuffle_seed is None:
+        order, stops = np.arange(len(rows)), range(BATCH, len(rows) + BATCH, BATCH)
+    else:
+        order, stops = np.random.default_rng(shuffle_seed).permutation(len(rows)), range(BATCH, len(rows) + 1, BATCH)
 
-    def __getitem__(self, i: int):
-        if self.cache is None:
-            self.cache = open_cache(self.n_scans)
-        crop = torch.from_numpy(np.array(self.cache[self.rows[i]]))
-        return (crop, *(torch.tensor(t[i]) for t in self.targets))
+    def load(pick: np.ndarray):
+        idx = rows[pick]
+        by_file = np.argsort(idx)  # read the memmap front to back
+        crops = np.empty((len(idx), *cache.shape[1:]), np.uint8)
+        crops[by_file] = cache[idx[by_file]]
+        return (torch.from_numpy(crops).pin_memory(), *(torch.from_numpy(t[idx]) for t in targets))
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        pending = deque()
+        for stop in stops:
+            pending.append(pool.submit(load, order[stop - BATCH:stop]))
+            if len(pending) > PREFETCH:
+                yield pending.popleft().result()
+        while pending:
+            yield pending.popleft().result()
 
 
-def loader(dataset: Dataset, shuffle: bool) -> DataLoader:
-    return DataLoader(dataset, batch_size=BATCH, shuffle=shuffle, drop_last=shuffle, num_workers=WORKERS,
-                      pin_memory=True, persistent_workers=shuffle)
+def n_batches(n: int, shuffle: bool) -> int:
+    return n // BATCH if shuffle else -(-n // BATCH)
 
 
 def to_input(crops: torch.Tensor, model: torch.nn.Module, augment: bool = False) -> torch.Tensor:
@@ -88,7 +103,7 @@ def predict(model: torch.nn.Module, n_scans: int, rows: np.ndarray, features: bo
     With features=True also returns the pooled image features, shape (len(rows), d), float32.
     """
     logits, feats = [], []
-    for (crops,) in loader(Crops(n_scans, rows), shuffle=False):
+    for (crops,) in batches(n_scans, rows):
         x = to_input(crops.cuda(non_blocking=True), model)
         out_logit, out_feat = 0, 0
         for view in (x, x.flip(3)):

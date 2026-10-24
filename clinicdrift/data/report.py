@@ -13,13 +13,13 @@ import pandas as pd
 from sklearn.metrics import roc_auc_score
 
 from clinicdrift.config import PROCESSED_DIR, REPO
-from clinicdrift.data.prepare import SCANS
-from clinicdrift.data.score import MODEL_JSON
+from clinicdrift.data.score import MODEL_JSON, SCANS
 from clinicdrift.data.sources import SOURCES, TRAINING_SOURCE
 
 REPORT_JSON = PROCESSED_DIR / "model_report.json"
 REPORT_MD = REPO / "docs" / "model-report.md"
 Z = 1.96  # 95% intervals
+WEAR_BANDS = ((0.0, 0.35), (0.35, 0.7), (0.7, 1.0))
 
 
 def wilson(hits: int, n: int) -> tuple[float, float]:
@@ -63,16 +63,21 @@ def _confidence_estimate(p: np.ndarray, threshold: float) -> float:
 
 def main() -> None:
     scans = pd.read_parquet(SCANS)
-    if scans["p_referable"].isna().any():
-        raise SystemExit("p_referable is empty: run python -m clinicdrift.data.score first")
     model = json.loads(MODEL_JSON.read_text(encoding="utf-8"))
     threshold = model["referral_threshold"]
 
-    groups = {"EyePACS val (threshold set here)": scans[(scans["source"] == TRAINING_SOURCE) & (scans["split"] == "val")],
-              "EyePACS held-out test (baseline)": scans[(scans["source"] == TRAINING_SOURCE) & (scans["split"] == "test")]}
+    eyepacs = scans[scans["source"] == TRAINING_SOURCE]
+    clean = eyepacs[eyepacs["wear"] == 0]
+    groups = {"EyePACS val (threshold set here)": clean[clean["split"] == "val"],
+              "EyePACS held-out test (baseline)": clean[clean["split"] == "test"]}
     for name, src in SOURCES.items():
         if name != TRAINING_SOURCE:
             groups[f"{src.site} ({src.country})"] = scans[scans["source"] == name]
+    worn = eyepacs[eyepacs["wear"] > 0]
+    for low, high in WEAR_BANDS:  # the worn-camera clinic's scans, by how worn the camera was
+        band = worn[(worn["wear"] > low) & (worn["wear"] <= high)]
+        if len(band):
+            groups[f"EyePACS, camera wear {low:.2f}–{high:.2f}"] = band
     report = {name: site_rates(group, threshold) for name, group in groups.items()}
     REPORT_JSON.write_text(json.dumps({"referral_threshold": threshold, "sites": report}, indent=2), encoding="utf-8")
 
@@ -92,18 +97,25 @@ def main() -> None:
         "| Site | Scans | Referable | AUC | Catch rate (95% CI) | Change vs baseline | Specificity | Referred | Naive estimate | Quality | Median width |",
         "| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
+    def pct(x) -> str:
+        return "n/a" if x is None or np.isnan(x) else f"{x:.1%}"
+
     for name, r in report.items():
-        change = f"{(r['sensitivity'] - baseline) * 100:+.1f} pts" if "EyePACS" not in name else ""
+        is_reference = name.startswith("EyePACS val") or "baseline" in name
+        change = "" if is_reference or r["sensitivity"] is None else f"{(r['sensitivity'] - baseline) * 100:+.1f} pts"
+        auc = "n/a" if r["auc"] is None else f"{r['auc']:.3f}"
         lines.append(
-            f"| {name} | {r['n_scans']:,} | {r['n_referable']:,} ({r['prevalence']:.0%}) | {r['auc']:.3f} | "
-            f"{r['sensitivity']:.1%} ({r['sensitivity_low']:.1%}–{r['sensitivity_high']:.1%}) | {change} | "
-            f"{r['specificity']:.1%} | {r['referral_rate']:.1%} | {r['confidence_estimate']:.1%} | "
+            f"| {name} | {r['n_scans']:,} | {r['n_referable']:,} ({r['prevalence']:.0%}) | {auc} | "
+            f"{pct(r['sensitivity'])} ({pct(r['sensitivity_low'])}–{pct(r['sensitivity_high'])}) | {change} | "
+            f"{pct(r['specificity'])} | {pct(r['referral_rate'])} | {pct(r['confidence_estimate'])} | "
             f"{r['mean_quality']:.2f} | {r['median_width_px']:,.0f} px |")
     lines += [
         "",
         "Notes:",
         "",
         "- Quality is the 0–1 score in `scans.parquet`: 1 means as sharp, contrasty and well exposed as a typical training scan.",
+        "- Camera wear rows are the worn-camera copies the `US-WEAR-01` clinic sees (`clinicdrift/data/degrade.py`): "
+        "held-out EyePACS scans, blurred and darkened more each week.",
         "- The APTOS copy we use was resized to 224 × 224 px before upload, so part of its drop is resolution, which a real "
         "low-resolution camera would also cause.",
         "- No dataset has patient age, sex or ethnicity, so these are differences between sites and cameras, not patient groups.",

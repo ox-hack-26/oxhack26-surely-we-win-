@@ -1,0 +1,145 @@
+[
+  {
+    "clinic_id": "US-EYE-01",
+    "site": "EyePACS",
+    "country": "United States",
+    "note": "Same kind of scans as training: the alarm should stay quiet",
+    "segments": [
+      {
+        "source": "eyepacs",
+        "first_week": 1
+      }
+    ],
+    "scans_per_week": 50,
+    "wear_from_week": null,
+    "switch_week": null
+  },
+  {
+    "clinic_id": "US-EYE-02",
+    "site": "EyePACS",
+    "country": "United States",
+    "note": "Same kind of scans as training: the alarm should stay quiet",
+    "segments": [
+      {
+        "source": "eyepacs",
+        "first_week": 1
+      }
+    ],
+    "scans_per_week": 50,
+    "wear_from_week": null,
+    "switch_week": null
+  },
+  {
+    "clinic_id": "SW-MES-01",
+    "site": "EyePACS, then Messidor-2",
+    "country": "Simulated",
+    "note": "New camera at week 9: EyePACS scans, then Messidor-2",
+    "segments": [
+      {
+        "source": "eyepacs",
+        "first_week": 1
+      },
+      {
+        "source": "messidor2",
+        "first_week": 9
+      }
+    ],
+    "scans_per_week": 50,
+    "wear_from_week": null,
+    "switch_week": 9
+  },
+  {
+    "clinic_id": "SW-APT-01",
+    "site": "EyePACS, then APTOS 2019",
+    "country": "Simulated",
+    "note": "New camera at week 11: EyePACS scans, then APTOS 2019",
+    "segments": [
+      {
+        "source": "eyepacs",
+        "first_week": 1
+      },
+      {
+        "source": "aptos",
+        "first_week": 11
+      }
+    ],
+    "scans_per_week": 50,
+    "wear_from_week": null,
+    "switch_week": 11
+  },
+  {
+    "clinic_id": "FR-MES-01",
+    "site": "Messidor-2",
+    "country": "France",
+    "note": "Different camera and patients from day one",
+    "segments": [
+      {
+        "source": "messidor2",
+        "first_week": 1
+      }
+    ],
+    "scans_per_week": 50,
+    "wear_from_week": null,
+    "switch_week": null
+  },
+  {
+    "clinic_id": "IN-APT-01",
+    "site": "APTOS 2019",
+    "country": "India",
+    "note": "Different camera and patients from day one",
+    "segments": [
+      {
+        "source": "aptos",
+        "first_week": 1
+      }
+    ],
+    "scans_per_week": 50,
+    "wear_from_week": null,
+    "switch_week": null
+  },
+  {
+    "clinic_id": "IN-APT-02",
+    "site": "APTOS 2019",
+    "country": "India",
+    "note": "Different camera and patients from day one",
+    "segments": [
+      {
+        "source": "aptos",
+        "first_week": 1
+      }
+    ],
+    "scans_per_week": 50,
+    "wear_from_week": null,
+    "switch_week": null
+  },
+  {
+    "clinic_id": "IN-IDR-01",
+    "site": "IDRiD",
+    "country": "India",
+    "note": "Small clinic: fewer scans a week, so wider uncertainty",
+    "segments": [
+      {
+        "source": "idrid",
+        "first_week": 1
+      }
+    ],
+    "scans_per_week": 25,
+    "wear_from_week": null,
+    "switch_week": null
+  },
+  {
+    "clinic_id": "US-WEAR-01",
+    "site": "EyePACS, wearing camera",
+    "country": "United States",
+    "note": "Same camera throughout, but from week 7 its scans get blurrier and darker every week",
+    "segments": [
+      {
+        "source": "eyepacs",
+        "first_week": 1
+      }
+    ],
+    "scans_per_week": 50,
+    "wear_from_week": 7,
+    "switch_week": null
+  }
+]

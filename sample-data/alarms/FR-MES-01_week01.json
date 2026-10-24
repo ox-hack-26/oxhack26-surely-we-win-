@@ -1,0 +1,53 @@
+{
+  "clinic_id": "FR-MES-01",
+  "site": "Messidor-2",
+  "country": "France",
+  "week": 1,
+  "week_start": "2026-01-05",
+  "estimated_catch_rate": 0.5,
+  "ci_low": 0.05,
+  "ci_high": 0.95,
+  "baseline_catch_rate": 0.8992248062015504,
+  "expected_missed_cases": 6.205517768859863,
+  "expected_harm": 303965.4933099985,
+  "review_cost": 25000,
+  "referral_threshold": 0.060225389897823334,
+  "alarm_reason": "drift",
+  "drift_auc": 0.9920399999999999,
+  "flagged_scan_stats": {
+    "n_scans": 50,
+    "mean_brightness": 0.3281468054652214,
+    "mean_contrast": 0.056418683603405954,
+    "mean_sharpness": 0.0002126156316808192,
+    "mean_quality": 0.19786624999999997,
+    "mean_resolution_px": 2012.8,
+    "referral_score_mean": 0.26885953545570374,
+    "referral_rate": 0.8
+  },
+  "training_scan_stats": {
+    "n_scans": 8000,
+    "mean_brightness": 0.3725177582898177,
+    "mean_contrast": 0.09630700049304869,
+    "mean_sharpness": 0.0003985424103721016,
+    "mean_quality": 0.499937484375,
+    "mean_resolution_px": 1023.14325,
+    "referral_score_mean": 0.1927846521139145,
+    "referral_rate": 0.684625
+  },
+  "flagged_scan_ids": [
+    "messidor2-01738",
+    "messidor2-00709",
+    "messidor2-01647",
+    "messidor2-01348",
+    "messidor2-00965",
+    "messidor2-01740"
+  ],
+  "reference_scan_ids": [
+    "eyepacs-18674",
+    "eyepacs-14837",
+    "eyepacs-31687",
+    "eyepacs-33378",
+    "eyepacs-03709",
+    "eyepacs-07185"
+  ]
+}

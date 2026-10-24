@@ -3,7 +3,7 @@
     python -m clinicdrift.data.train            # ~15 min on an RTX 5090 laptop
     python -m clinicdrift.data.train --epochs 1 # quick check that everything runs
 
-Needs processed/scans.parquet and the crop cache from `python -m clinicdrift.data.prepare`.
+Needs the crop cache from `python -m clinicdrift.data.prepare`.
 Writes models/referral.pt and models/train_log.csv under CLINICDRIFT_DATA.
 """
 import argparse
@@ -17,8 +17,8 @@ import torch
 import torch.nn.functional as F
 from sklearn.metrics import roc_auc_score
 
-from clinicdrift.data.model import ARCH, MODEL_FILE, Crops, build_model, loader, predict, to_input
-from clinicdrift.data.prepare import SCANS
+from clinicdrift.data.model import ARCH, BATCH, MODEL_FILE, batches, build_model, n_batches, predict, to_input
+from clinicdrift.data.prepare import PREPARED
 from clinicdrift.data.sources import TRAINING_SOURCE
 
 SEED = 2026
@@ -36,18 +36,18 @@ def main() -> None:
     torch.manual_seed(SEED)
     torch.backends.cudnn.benchmark = True
 
-    scans = pd.read_parquet(SCANS, columns=["source", "split", "grade", "referable"])
-    eyepacs = scans["source"] == TRAINING_SOURCE
+    scans = pd.read_parquet(PREPARED, columns=["source", "split", "grade", "referable", "wear"])
+    eyepacs = (scans["source"] == TRAINING_SOURCE) & (scans["wear"] == 0)
     train = np.flatnonzero(eyepacs & (scans["split"] == "train"))
     val = np.flatnonzero(eyepacs & (scans["split"] == "val"))
     referable = scans["referable"].to_numpy(np.float32)
     grade = scans["grade"].to_numpy(np.float32)
     print(f"train {len(train):,} scans ({referable[train].mean():.1%} referable), val {len(val):,}")
 
-    data = loader(Crops(len(scans), train, referable[train], grade[train]), shuffle=True)
+    steps_per_epoch = n_batches(len(train), shuffle=True)
     model = build_model(pretrained=True).cuda().to(memory_format=torch.channels_last)
     optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
-    total = args.epochs * len(data)
+    total = args.epochs * steps_per_epoch
     schedule = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda step: min(
         (step + 1) / WARMUP_STEPS, 0.5 * (1 + math.cos(math.pi * min(step, total) / total))))
 
@@ -59,6 +59,7 @@ def main() -> None:
     for epoch in range(1, args.epochs + 1):
         model.train()
         start, losses = time.time(), []
+        data = batches(len(scans), train, referable, grade, shuffle_seed=SEED + epoch)
         for step, (crops, y, g) in enumerate(data, 1):
             x = to_input(crops.cuda(non_blocking=True), model, augment=True)
             y, g = y.cuda(non_blocking=True), g.cuda(non_blocking=True)
@@ -72,8 +73,8 @@ def main() -> None:
             schedule.step()
             losses.append(loss.item())
             if step % 100 == 0:
-                print(f"  epoch {epoch} step {step}/{len(data)} loss {np.mean(losses[-100:]):.4f} "
-                      f"({step * data.batch_size / (time.time() - start):.0f} scans/s)", flush=True)
+                print(f"  epoch {epoch} step {step}/{steps_per_epoch} loss {np.mean(losses[-100:]):.4f} "
+                      f"({step * BATCH / (time.time() - start):.0f} scans/s)", flush=True)
 
         model.eval()
         auc = roc_auc_score(referable[val], predict(model, len(scans), val))

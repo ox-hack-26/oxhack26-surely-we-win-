@@ -15,6 +15,8 @@ The files each person hands to the next are defined in [docs/handoffs.md](docs/h
 
 ## Setup
 
+No scans on your machine? [`sample-data/`](sample-data/README.md) has the clinics, weekly results, alarm files and a few scans, so the dashboard and add-ons can work without downloading anything.
+
 1. Pick a data folder **outside** OneDrive or Dropbox. The scans are about 9.5 GB and syncing them would eat the wifi.
 2. Copy `.env.example` to `.env` and set `CLINICDRIFT_DATA` to that folder. Put your API keys in `.env` too; it is never committed.
 3. Download the scans. This needs only plain Python, no installs, and can be re-run to resume:
@@ -25,6 +27,7 @@ The files each person hands to the next are defined in [docs/handoffs.md](docs/h
 
    Smallest first: IDRiD, APTOS, Messidor-2, then EyePACS (6.5 GB). Pass names to fetch only some, e.g. `python scripts/download_data.py aptos idrid`.
 4. For everything else, make a virtual environment (also outside OneDrive) and `pip install -r requirements.txt`. The add-ons have their own `requirements-addons.txt`.
+5. Real model (Sarah, needs a GPU): `python -m clinicdrift.engine.replay`, then `python -m clinicdrift.data.prepare`, `train`, `score` and `report`. Until `score` has run, the engine uses the stand-in.
 
 ## Layout
 
@@ -33,16 +36,22 @@ clinicdrift/
   config.py      where the data folder is; reads .env
   data/          Sarah: image quality, image features, classifier
     sources.py   the shared scan list (scan IDs, splits, grades) and load_image
+    degrade.py   simulated camera wear (blur + darkening) for the US-WEAR-01 clinic
     prepare.py   crop every scan to the retina, measure quality: python -m clinicdrift.data.prepare
     train.py     fine-tune the referral classifier on EyePACS: python -m clinicdrift.data.train
-    score.py     p_referable, image features, model.json: python -m clinicdrift.data.score
+    score.py     p_referable, features.npy, model.json, scans.parquet: python -m clinicdrift.data.score
     report.py    the accuracy drop at each site: python -m clinicdrift.data.report
-  engine/        Tejas: catch-rate estimate, alarm rule, backtest
+    standin.py   stand-in model until Sarah's lands: python -m clinicdrift.data.standin
+  engine/        Tejas: run these in order
     replay.py    simulated clinics: python -m clinicdrift.engine.replay
+    estimate.py  label-free catch rate and drift per clinic-week
+    decide.py    drift-aware belief, grades as they arrive, cost-loss alarm, alarm files
+    backtest.py  four monitoring policies compared, plus a review-cost sweep
 addons/          Vansh: Gemini cause-finding and report, ElevenLabs alert
 db/schema.sql    Sneha: Tiger Data tables
 docs/            hand-off formats
-scripts/         one-off scripts (downloads)
+sample-data/     small copies of the outputs for teammates without the scans
+scripts/         downloads; export_samples.py refreshes sample-data/
 web/             Sneha: dashboard
 ```
 
