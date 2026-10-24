@@ -16,7 +16,7 @@ The alarm demo runs from a fresh clone with **no API keys**: it replays saved Ge
 git clone -b vansh/addons https://github.com/ox-hack-26/oxhack26-surely-we-win-.git
 cd oxhack26-surely-we-win-
 python -m venv .venv
-.venv\Scriptsctivate            # macOS/Linux: source .venv/bin/activate
+.venv\Scripts\activate            # macOS/Linux: source .venv/bin/activate
 pip install -r requirements-addons.txt
 python -m addons.run_demo --clinic US-WEAR-01 --replay   # the worn-camera alarm
 python -m addons.run_demo --all --replay                 # all 8 alarms
