@@ -47,6 +47,7 @@ clinicdrift/
     estimate.py  label-free catch rate and drift per clinic-week
     decide.py    drift-aware belief, grades as they arrive, cost-loss alarm, alarm files
     backtest.py  four monitoring policies compared, plus a review-cost sweep
+    results.py   writes docs/results.md, the one source for pitch and Devpost numbers
 addons/          Vansh: Gemini cause-finding and report, ElevenLabs alert
 db/schema.sql    Sneha: Tiger Data tables
 docs/            hand-off formats
