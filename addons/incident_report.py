@@ -102,7 +102,7 @@ def template_report(alarm: Alarm, cause: Cause, n_scans: Optional[int] = None) -
 - Intended use: screening retinal photographs for referable diabetic retinopathy
 
 ## 2. Where and when
-- Clinic: {alarm.clinic_id} ({alarm.site}, {alarm.country})
+- Clinic: {alarm.clinic_id} ({alarm.country})
 - Period: {when}
 
 ## 3. What happened

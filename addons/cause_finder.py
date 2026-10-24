@@ -209,7 +209,8 @@ def _prompt(alarm: Alarm, ev: Evidence, rules: Cause) -> str:
             f"(uncertainty band {alarm.ci_low:.0%}-{alarm.ci_high:.0%}); baseline {alarm.baseline_catch_rate:.0%}.\n"
         )
     return (
-        f"Clinic {alarm.clinic_id} ({alarm.site}, {alarm.country}), week {alarm.week}.\n"
+        # No site name: it describes the simulated scenario and would give the answer away.
+        f"Clinic {alarm.clinic_id} ({alarm.country}), week {alarm.week}.\n"
         f"{status}"
         f"Scans this week: {n}.\n"
         f"Scan statistics, this clinic-week vs training:\n{stats}\n{threshold}"

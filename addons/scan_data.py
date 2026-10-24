@@ -123,8 +123,8 @@ def load_images(scan_ids, caption: str) -> list:
     images = []
     for scan_id in list(scan_ids)[:IMAGES_PER_SET]:
         data = _load_one(scan_id, load_image)
-        if data:
-            images.append((f"{caption} ({scan_id}):", data, "image/jpeg"))
+        if data:  # numbered, not by scan id: ids name the source dataset
+            images.append((f"{caption} {len(images) + 1}:", data, "image/jpeg"))
     return images
 
 

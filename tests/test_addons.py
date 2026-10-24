@@ -365,3 +365,25 @@ def test_out_of_quota_model_falls_through_to_the_next(fake_gemini, monkeypatch):
     assert saved["model"] == "m-spare"
     gemini_client.generate_json("other", {}, "s", tag="T")
     assert fake.used[-1] == "m-spare"  # exhausted models are skipped for the rest of the run
+
+
+@pytest.mark.parametrize("path", SAMPLE_ALARMS, ids=lambda p: p.stem)
+def test_gemini_never_sees_the_site_or_dataset(path, monkeypatch):
+    # The site name describes the simulated scenario ("wearing camera", "faulty software update")
+    # and scan ids name the dataset, so either would hand Gemini the answer.
+    sent = []
+
+    def capture(prompt, *args, images=None, **kwargs):
+        sent.append(prompt)
+        sent.extend(caption for caption, _, _ in images or [])
+        return None
+
+    monkeypatch.setattr(gemini_client, "generate_json", capture)
+    monkeypatch.setattr(gemini_client, "generate_text", capture)
+    alarm = load_alarm(path)
+    run(path)
+    text = "\n".join(sent)
+    assert len(sent) > 2 and alarm.clinic_id in text
+    assert alarm.site not in text
+    for name in ("eyepacs", "aptos", "messidor", "idrid", *alarm.flagged_scan_ids, *alarm.reference_scan_ids):
+        assert name.lower() not in text.lower()
