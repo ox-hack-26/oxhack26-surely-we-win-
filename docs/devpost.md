@@ -26,8 +26,8 @@ python -m pytest -q tests                                # 67 offline tests
 Each run prints the likely cause and a short alert script, and writes the cause and the draft
 incident report to `addons/out/`.
 
-The dashboard also starts with no keys, in a labelled synthetic demo mode (its numbers are
-illustrative, not the replay results above):
+The dashboard also starts with no keys. It reads the engine's replay results from `sample-data/`
+(no longer synthetic):
 
 ```bash
 pip install -r dashboard/requirements.txt
@@ -70,11 +70,13 @@ early warning, and a clear decision about what to do.
 - **Training data:** EyePACS (US).
 - **Deployment clinics:** APTOS 2019 (India), Messidor-2 (France), IDRiD (India), split into
   simulated clinics and weeks.
-- **Storage:** per-clinic, per-week results in Tiger Data.
+- **Storage:** the Tiger Data schema and load scripts are written (`dashboard/sql/tiger_prize.sql`,
+  `dashboard/scripts/tiger_admin.py`) but haven't been run yet; today the results are CSV files in
+  `sample-data/`.
 - **Cause finding and reports:** Gemini, with rule-based and template fallbacks so the demo works offline.
 - **Alert script:** a short text alert per alarm (`addons/voice_alert.py`); voicing it is future work.
-- **Dashboard:** Streamlit and Plotly (`dashboard/`), reading weekly results from Tiger Cloud, with an
-  explicit mock mode that is labelled as synthetic.
+- **Dashboard:** Streamlit and Plotly (`dashboard/`), reading the engine's weekly replay results from
+  the CSVs in `sample-data/`.
 
 ## Challenges we ran into
 
@@ -164,9 +166,11 @@ nothing in the scans themselves points to the update. The answers are saved in `
 so the demo replays them with no API quota.
 
 ### Best Use of Tiger Data
-Scan events go into a Tiger (TimescaleDB) hypertable keyed on time, with a continuous aggregate that
-rolls them up per clinic-week (`db/schema.sql`); the dashboard reads its weekly monitoring table from
-Tiger Cloud. [TBD: confirm the live tables are loaded before submitting.]
+The Tiger (TimescaleDB) schema is written but hasn't been run yet: `dashboard/sql/tiger_prize.sql`
+defines a `scan_events` hypertable keyed on time and a continuous aggregate that rolls scans up per
+clinic-week, and `dashboard/scripts/tiger_admin.py` creates the schema and loads records. The
+dashboard reads CSVs from `sample-data/` today, not Tiger.
+[TBD: Sneha runs tiger_prize.sql and loads the data, or delete this section before submitting]
 
 ## Data and credits
 
