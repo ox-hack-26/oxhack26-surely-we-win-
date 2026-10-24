@@ -24,7 +24,6 @@ early warning, and a clear decision about what to do.
 - **Training data:** EyePACS (US).
 - **Deployment clinics:** APTOS 2019 (India), Messidor-2 (France), IDRiD (India), split into
   simulated clinics and weeks.
-- **Compute:** model training and inference on a Vultr GPU.
 - **Storage:** per-clinic, per-week results in Tiger Data.
 - **Cause finding and reports:** Gemini, with rule-based and template fallbacks so the demo works offline.
 - **Spoken alerts:** ElevenLabs text to speech.
@@ -71,7 +70,7 @@ Results: [TBD]
 [TBD]
 
 ### Best Use of Vultr
-[TBD]
+[TBD: only include if Sarah's model/backend actually runs on Vultr]
 
 ## Data and credits
 
