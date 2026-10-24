@@ -334,3 +334,14 @@ def test_busy_503_is_retried_once(fake_gemini):
     assert gemini_client.generate_json("p", {}, "s", tag="T") is None
     assert fake.n == 2
     assert gemini_client.last_error.startswith("503 UNAVAILABLE")
+
+
+def test_replay_accepts_another_models_answer(fake_gemini, monkeypatch):
+    fake = fake_gemini(text="from 3.6")
+    monkeypatch.setattr(config, "GEMINI_MODEL", "gemini-3.6-flash")
+    gemini_client.generate_text("p", "s", tag="T")
+    monkeypatch.setattr(config, "GEMINI_MODEL", "gemini-3.8-flash")
+    monkeypatch.setattr(gemini_client, "MODE", "replay")
+    assert gemini_client.generate_text("p", "s", tag="T") == "from 3.6"
+    assert gemini_client.generate_text("other", "s", tag="T") is None
+    assert fake.n == 1

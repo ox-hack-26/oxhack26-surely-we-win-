@@ -6,6 +6,8 @@ can fall back to their offline path; `last_error` says why ("429 RESOURCE_EXHAUS
 Successful answers are saved under addons/cache/, one file per call, named after the
 caller's tag (e.g. US-WEAR-01_week9_cause), the model and a hash of the request.
 sample-data/gemini/ is read the same way, so committed answers replay with no quota.
+An answer from the configured model is preferred; otherwise one from any model is used
+for the same request (each file records which model wrote it).
 MODE picks how the cache is used:
     auto    saved answer if there is one, else call Gemini and save the answer
     replay  saved answers only, never call Gemini
@@ -64,22 +66,30 @@ def _image_parts(images):
     return parts
 
 
-def _cache_name(tag: str, kind: str, prompt: str, system: str, schema=None, images=None) -> str:
+def _cache_name(tag: str, kind: str, prompt: str, system: str, schema=None, images=None, model=None) -> str:
     # Images are keyed by caption (which names the scan), so a raw scan and its sample copy match.
     captions = [caption for caption, _, _ in (images or [])[:MAX_IMAGES]]
     request = json.dumps([kind, system, prompt, schema, captions], sort_keys=True)
     digest = hashlib.sha256(request.encode("utf-8")).hexdigest()[:12]
-    return f"{tag}_{config.GEMINI_MODEL}_{digest}.json"
+    return f"{tag}_{model or config.GEMINI_MODEL}_{digest}.json"
 
 
-def _load_cached(name: str):
+def _load_cached(name: str, any_model: str):
+    """The saved response in `name`, else in a file for the same request from another model."""
+    candidates = [folder / name for folder in (CACHE_DIR, SAMPLE_CACHE_DIR)]
     for folder in (CACHE_DIR, SAMPLE_CACHE_DIR):
-        path = folder / name
+        candidates += sorted(folder.glob(any_model)) if folder.is_dir() else []
+    for path in candidates:
         if path.is_file():
             try:
-                return json.loads(path.read_text(encoding="utf-8"))["response"]
-            except (OSError, ValueError, KeyError) as e:
+                record = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as e:
                 print(f"[gemini] ignoring unreadable cache file {path.name}: {type(e).__name__}")
+                continue
+            if "response" in record:
+                if record.get("model") != config.GEMINI_MODEL:
+                    print(f"[gemini] using {record.get('model')}'s saved answer for {record.get('tag')}")
+                return record["response"]
     return None
 
 
@@ -121,7 +131,7 @@ def _call(tag: str, kind: str, request, parse, prompt: str, system: str, schema=
     global last_error
     name = _cache_name(tag, kind, prompt, system, schema, images)
     if MODE != "live":
-        cached = _load_cached(name)
+        cached = _load_cached(name, _cache_name(tag, kind, prompt, system, schema, images, model="*"))
         if cached is not None:
             calls["cached"] += 1
             return cached

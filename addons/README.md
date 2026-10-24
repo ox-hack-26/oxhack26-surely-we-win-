@@ -32,6 +32,9 @@ for the quota).
 - `--replay` uses saved answers only and never calls Gemini: use it for the live demo.
 - `--live` always calls Gemini and overwrites the saved answer.
 
+A saved answer from another model is used when the configured model has none for that request
+(the log says which model); each saved file records the model that wrote it.
+
 `sample-data/gemini/` is read the same way, so the demo can show real Gemini output on any machine
 with no quota and no key. To fill it once there is quota:
 
