@@ -92,11 +92,11 @@ one with every change caught, no false alarms and no extra missed cases, at the 
 ### Best Use of Gemini
 Gemini looks at a flagged clinic's scan statistics and sample images to suggest a likely cause with
 evidence and checks, then drafts the incident report a human would otherwise write from scratch.
-Results: on the 7 alarms from the replay, Gemini named a cause for 4 and rewrote 4 reports in our
-live test; the rest fell back to the rules and template because of a network error and the free-tier
-quota. Every cause it gave matched the rule-based check (camera or image quality, confidence
-0.8 to 0.9), and none of the drift reports quoted a catch rate. [TBD: rerun all 7 live once the
-quota allows and update this line.]
+Results: Gemini (gemini-3.6-flash) named the cause and rewrote the incident report for all 7
+alarms from the replay, looking at 2 flagged and 2 typical training scans for each. Every cause it gave
+agreed with the rule-based check (camera or image quality, confidence 0.75 to 0.9) and added practical
+checks for the clinic; none of the reports quoted a catch rate, which can't be verified on a drift
+alarm. The answers are saved in `sample-data/gemini/`, so the demo replays them with no API quota.
 
 ### Best Use of ElevenLabs
 A spoken alert of under 25 seconds tells a busy clinic lead what changed, why, and the first thing to check.
