@@ -148,7 +148,7 @@ def _prompt(alarm: Alarm, shifts: dict, rules: Cause) -> str:
     return (
         f"Clinic {alarm.clinic_id} ({alarm.site}, {alarm.country}), week {alarm.week}.\n"
         f"Estimated catch rate this week: {alarm.estimated_catch_rate:.0%} "
-        f"(90% band {alarm.ci_low:.0%}-{alarm.ci_high:.0%}); baseline {alarm.baseline_catch_rate:.0%}.\n"
+        f"(uncertainty band {alarm.ci_low:.0%}-{alarm.ci_high:.0%}); baseline {alarm.baseline_catch_rate:.0%}.\n"
         f"Scans this week: {alarm.flagged_scan_stats.n_scans}.\n"
         f"Scan statistics, flagged week vs training:\n{json.dumps(shifts, indent=2)}\n\n"
         f"A rule-based check suggests: {rules.category} - {rules.likely_cause}\n\n"
