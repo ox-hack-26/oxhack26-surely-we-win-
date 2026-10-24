@@ -33,6 +33,10 @@ clinicdrift/
   config.py      where the data folder is; reads .env
   data/          Sarah: image quality, image features, classifier
     sources.py   the shared scan list (scan IDs, splits, grades) and load_image
+    prepare.py   crop every scan to the retina, measure quality: python -m clinicdrift.data.prepare
+    train.py     fine-tune the referral classifier on EyePACS: python -m clinicdrift.data.train
+    score.py     p_referable, image features, model.json: python -m clinicdrift.data.score
+    report.py    the accuracy drop at each site: python -m clinicdrift.data.report
   engine/        Tejas: catch-rate estimate, alarm rule, backtest
     replay.py    simulated clinics: python -m clinicdrift.engine.replay
 addons/          Vansh: Gemini cause-finding and report, ElevenLabs alert

@@ -16,11 +16,13 @@ Start from `clinicdrift.data.sources.load_scans()`. It already has `scan_id`, `s
 | `grade` | int 0–4 | Expert grade |
 | `referable` | bool | `grade >= 2`: the patient must be referred |
 | `p_referable` | float 0–1 | Classifier's probability that the scan needs referral |
-| `quality` | float 0–1 | Image quality score, higher is better |
-| `brightness` | float 0–1 | Mean greyscale pixel value / 255 |
-| `contrast` | float 0–1 | Standard deviation of greyscale pixels / 255 |
-| `sharpness` | float | Variance of the Laplacian |
+| `quality` | float 0–1 | Image quality: the worst of sharpness, contrast and exposure, scored against the EyePACS training scans. About 1 for a typical training scan; the 224 px APTOS copies score near 0 on sharpness |
+| `brightness` | float 0–1 | Mean greyscale pixel value / 255, inside the retina (black surround left out) |
+| `contrast` | float 0–1 | Standard deviation of greyscale pixels / 255, inside the retina |
+| `sharpness` | float | Variance of the Laplacian inside the retina, measured after resizing the retina to 512 px so cameras compare fairly |
 | `width`, `height` | int | Original size in pixels |
+
+Made by `python -m clinicdrift.data.prepare` (quality columns, `p_referable` empty) and then `python -m clinicdrift.data.score` (fills `p_referable`).
 
 Image features go in `features/<source>.npy`: float32, shape `(n_scans, d)`, rows in the same order as that source's rows in `scans.parquet`.
 
