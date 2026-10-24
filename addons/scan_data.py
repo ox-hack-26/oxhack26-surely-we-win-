@@ -4,7 +4,8 @@ The alarm normally carries flagged_scan_stats and training_scan_stats. If either
 is missing, it is rebuilt from the scans.parquet rows for flagged_scan_ids or
 reference_scan_ids, counting a scan as referred when p_referable >= the alarm's
 referral_threshold (0.5 if the alarm has none). weekly.parquet gives the week's
-scan count, and clinicdrift.data.load_image gives sample images for Gemini. Each piece is
+scan count, and clinicdrift.data.sources.load_image (or the copies in
+sample-data/images) gives sample images for Gemini. Each piece is
 optional: anything missing comes back empty and the add-ons carry on without it.
 """
 
@@ -14,13 +15,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from clinicdrift.config import PROCESSED_DIR
+from clinicdrift.config import PROCESSED_DIR, REPO
 
 from .alarm_schema import FALLBACK_REFER_THRESHOLD, Alarm, ScanStats, summarise
 
 SCANS_PATH = PROCESSED_DIR / "scans.parquet"
 WEEKLY_PATH = PROCESSED_DIR / "weekly.parquet"
 IMAGES_PER_SET = 2
+SAMPLE_IMAGES = REPO / "sample-data" / "images"  # small copies, for machines without the raw scans
 
 
 @dataclass
@@ -81,19 +83,40 @@ def _to_jpeg(image) -> Optional[bytes]:
     return None
 
 
-def load_images(scan_ids, caption: str) -> list:
-    """Up to IMAGES_PER_SET images via clinicdrift.data.load_image, once that loader exists."""
+def _loader():
+    """clinicdrift's load_image, or None if it isn't there."""
     try:
-        from clinicdrift.data import load_image
+        from clinicdrift.data.sources import load_image
     except ImportError:
-        return []
+        try:
+            from clinicdrift.data import load_image
+        except ImportError:
+            return None
+    return load_image
+
+
+def _load_one(scan_id: str, load_image) -> Optional[bytes]:
+    """The scan from the raw data if it is on this machine, else its copy in sample-data/images."""
+    if load_image is not None:
+        try:
+            return _to_jpeg(load_image(scan_id))
+        except Exception as e:
+            error = f"{type(e).__name__}: {e}"
+    else:
+        error = "no load_image in clinicdrift.data"
+    sample = SAMPLE_IMAGES / f"{scan_id}.jpg"
+    if sample.is_file():
+        return sample.read_bytes()
+    print(f"[images] could not load {scan_id}: {error}")
+    return None
+
+
+def load_images(scan_ids, caption: str) -> list:
+    """Up to IMAGES_PER_SET images via clinicdrift.data.sources.load_image, or sample-data/images."""
+    load_image = _loader()
     images = []
     for scan_id in list(scan_ids)[:IMAGES_PER_SET]:
-        try:
-            data = _to_jpeg(load_image(scan_id))
-        except Exception as e:
-            print(f"[images] could not load {scan_id}: {type(e).__name__}: {e}")
-            continue
+        data = _load_one(scan_id, load_image)
         if data:
             images.append((f"{caption} ({scan_id}):", data, "image/jpeg"))
     return images

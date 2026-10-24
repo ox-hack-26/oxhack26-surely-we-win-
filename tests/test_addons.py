@@ -10,7 +10,7 @@ from addons.alarm_schema import alarm_path, load_alarm
 from addons.cause_finder import compute_shifts, find_cause, rule_cause
 from addons.incident_report import template_report
 from addons.run_demo import DEFAULT_ALARM, FAKE_SCANS, run
-from addons.scan_data import Evidence, gather_evidence, load_scan_rows
+from addons.scan_data import Evidence, gather_evidence, load_images, load_scan_rows
 from addons.voice_alert import alert_script, speak
 
 
@@ -218,3 +218,10 @@ def test_sample_alarms_run_offline(path):
     assert summary["alarm_reason"] == "drift"
     assert "can't be verified" in summary["alert_script"]
     assert "%" not in summary["alert_script"]
+
+
+@pytest.mark.parametrize("path", SAMPLE_ALARMS, ids=lambda p: p.stem)
+def test_sample_alarm_images_load_without_raw_scans(path):
+    alarm = load_alarm(path)
+    assert len(load_images(alarm.flagged_scan_ids, "flagged")) == 2
+    assert len(load_images(alarm.reference_scan_ids, "reference")) == 2
