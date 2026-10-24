@@ -1,0 +1,23 @@
+{
+  "tag": "SW-MES-01_week9_cause",
+  "model": "gemini-3.5-flash-lite",
+  "kind": "json",
+  "response": {
+    "likely_cause": "Changes in image quality and camera hardware configuration leading to lower contrast and sharpness, impacting referral rates.",
+    "category": "camera or image quality",
+    "evidence": [
+      "Drift score is 0.99, indicating scans no longer look like training data.",
+      "Mean quality dropped from 0.5 to 0.193, a relative change of -0.614.",
+      "Mean contrast decreased from 0.0963 to 0.0548, a relative change of -0.431.",
+      "Mean sharpness decreased from 0.000399 to 0.000222, a relative change of -0.443.",
+      "Mean resolution increased from 1020.0 px to 2070.0 px, a relative change of 1.019.",
+      "Referral rate increased from 0.685 to 0.86, a relative change of 0.256."
+    ],
+    "confidence": 0.95,
+    "recommended_checks": [
+      "Inspect the camera hardware and clean the lenses.",
+      "Verify camera capture settings and check if resolution scaling or compression algorithms were altered.",
+      "Review technician imaging protocols to ensure proper focus, alignment, and illumination."
+    ]
+  }
+}

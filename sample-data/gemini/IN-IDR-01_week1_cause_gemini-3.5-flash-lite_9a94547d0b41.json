@@ -1,0 +1,23 @@
+{
+  "tag": "IN-IDR-01_week1_cause",
+  "model": "gemini-3.5-flash-lite",
+  "kind": "json",
+  "response": {
+    "likely_cause": "The clinic is producing images with significantly altered contrast, reduced sharpness, and much higher resolution compared to training data, leading to a drift alarm and an elevated referral rate.",
+    "category": "camera or image quality",
+    "evidence": [
+      "Drift score is 0.96 indicating scans no longer look like training data",
+      "Mean contrast changed from 0.0963 to 0.0733 (-0.238 relative change)",
+      "Mean sharpness changed from 0.000399 to 0.000227 (-0.431 relative change)",
+      "Mean quality changed from 0.5 to 0.284 (-0.433 relative change)",
+      "Mean resolution changed from 1020.0 px to 4290.0 px (3.191 relative change)",
+      "Referral rate increased from 0.685 to 0.96 (+40.2%)"
+    ],
+    "confidence": 0.95,
+    "recommended_checks": [
+      "Inspect the camera lens and sensor for smudges or dust",
+      "Verify camera settings and resolution output configurations",
+      "Review technician image acquisition protocols for focus and alignment"
+    ]
+  }
+}

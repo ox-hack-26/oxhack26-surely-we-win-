@@ -1,0 +1,24 @@
+{
+  "tag": "US-WEAR-01_week9_cause",
+  "model": "gemini-3.5-flash-lite",
+  "kind": "json",
+  "response": {
+    "likely_cause": "The camera lens may be smudged or out of focus, or the illumination settings are too dark, leading to severely degraded image quality, lower brightness, and extremely low sharpness compared to training data.",
+    "category": "camera or image quality",
+    "evidence": [
+      "Drift score is 0.96, indicating the scans are clearly different from training data.",
+      "Mean brightness dropped from 0.373 in training to 0.313 in flagged scans (relative change -0.161).",
+      "Mean contrast decreased from 0.0963 to 0.0862 (relative change -0.105).",
+      "Mean sharpness dropped drastically from 0.000399 to 1.21e-05 (relative change -0.97).",
+      "Mean quality score dropped from 0.5 to 0.208 (relative change -0.584).",
+      "Visual inspection of the flagged scans shows noticeable blur and darkness compared to typical training scans."
+    ],
+    "confidence": 0.95,
+    "recommended_checks": [
+      "Inspect and clean the camera lens for smudges, dust, or fingerprints.",
+      "Verify camera focus settings and autofocus functionality.",
+      "Check illumination and flash settings to ensure adequate brightness.",
+      "Review technician image capture protocols and retraining on positioning and focus."
+    ]
+  }
+}
