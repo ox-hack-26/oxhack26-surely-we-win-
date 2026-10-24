@@ -9,9 +9,27 @@ def data_root():
     import os
     return Path(os.getenv("CLINICDRIFT_SAMPLE_DATA", str(Path(__file__).resolve().parents[2] / "sample-data")))
 
+def data_mode():
+    """'files' (default): sample-data/ CSVs. 'tiger': weekly results from Tiger Data, loaded by scripts/load_tiger.py."""
+    import os
+    return "tiger" if os.getenv("CLINICDRIFT_DATA_MODE", "").strip().lower() == "tiger" else "files"
+
+def load_weekly_from_tiger():
+    import os
+    import psycopg
+    url = os.getenv("TIMESCALE_SERVICE_URL") or os.getenv("TIGER_DATABASE_URL") or os.getenv("DATABASE_URL")
+    if not url:
+        raise FileNotFoundError("CLINICDRIFT_DATA_MODE=tiger but TIMESCALE_SERVICE_URL is not set")
+    try:
+        with psycopg.connect(url, connect_timeout=10) as conn, conn.cursor() as cur:
+            cur.execute("SELECT * FROM clinicdrift_demo.weekly_results ORDER BY clinic_id, week")
+            return pd.DataFrame(cur.fetchall(), columns=[d.name for d in cur.description])
+    except psycopg.Error as exc:  # never show the URL: it holds the password
+        raise ValueError(f"Tiger Data query failed ({type(exc).__name__}); run scripts/load_tiger.py first") from None
+
 def load_handoff(root=None):
     root = Path(root) if root else data_root()
-    weekly = pd.read_csv(root / "weekly.csv")
+    weekly = load_weekly_from_tiger() if data_mode() == "tiger" else pd.read_csv(root / "weekly.csv")
     missing = REQUIRED - set(weekly.columns)
     if missing:
         raise ValueError(f"Missing handoff columns: {sorted(missing)}")

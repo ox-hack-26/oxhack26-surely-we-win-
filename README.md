@@ -58,6 +58,7 @@ db/schema.sql    Sneha: Tiger Data tables
 docs/            hand-off formats
 sample-data/     small copies of the outputs for teammates without the scans
 scripts/         downloads; export_samples.py refreshes sample-data/, export_web.py the web app's data
+                 load_tiger.py loads the scans and weekly results into Tiger Data and checks them
 web/             the 3D web app (React, three.js): reads web/public/data/, written by scripts/export_web.py
 dashboard/       Sneha: Streamlit dashboard
 ```

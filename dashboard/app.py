@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import streamlit as st
 from dotenv import load_dotenv
-from ui.handoff import load_handoff, replay_view, alarm_for_week
+from ui.handoff import load_handoff, replay_view, alarm_for_week, data_mode
 from ui.costs import recompute
 from ui.real_charts import catch_chart, drift_chart
 
@@ -166,4 +166,5 @@ with right:
 st.divider()
 st.subheader('Replay history')
 st.dataframe(visible[['week','n_scans','catch_rate','catch_low','catch_high','est_sensitivity','drift_auc','graded_cases','graded_caught','alarm','alarm_reason']],hide_index=True,width='stretch')
-st.caption('Source: sample-data/ handoff; all clinic weeks are simulated. No database write occurs from this dashboard.')
+st.caption(('Source: Tiger Data (clinicdrift_demo.weekly_results)' if data_mode() == 'tiger' else 'Source: sample-data/ handoff')
+           + '; all clinic weeks are simulated. No database write occurs from this dashboard.')
