@@ -15,6 +15,8 @@ The files each person hands to the next are defined in [docs/handoffs.md](docs/h
 
 ## Setup
 
+No scans on your machine? [`sample-data/`](sample-data/README.md) has the clinics, weekly results, alarm files and a few scans, so the dashboard and add-ons can work without downloading anything.
+
 1. Pick a data folder **outside** OneDrive or Dropbox. The scans are about 9.5 GB and syncing them would eat the wifi.
 2. Copy `.env.example` to `.env` and set `CLINICDRIFT_DATA` to that folder. Put your API keys in `.env` too; it is never committed.
 3. Download the scans. This needs only plain Python, no installs, and can be re-run to resume:
@@ -35,12 +37,16 @@ clinicdrift/
     sources.py   the shared scan list (scan IDs, splits, grades) and load_image
     standin.py   stand-in model until Sarah's lands: python -m clinicdrift.data.standin
     degrade.py   simulated camera wear (blur + darkening) for the US-WEAR-01 clinic
-  engine/        Tejas: catch-rate estimate, alarm rule, backtest
+  engine/        Tejas: run these in order
     replay.py    simulated clinics: python -m clinicdrift.engine.replay
+    estimate.py  label-free catch rate and drift per clinic-week
+    decide.py    drift-aware belief, grades as they arrive, cost-loss alarm, alarm files
+    backtest.py  four monitoring policies compared, plus a review-cost sweep
 addons/          Vansh: Gemini cause-finding and report, ElevenLabs alert (see addons/README.md)
 db/schema.sql    Sneha: Tiger Data tables
 docs/            hand-off formats
-scripts/         one-off scripts (downloads)
+sample-data/     small copies of the outputs for teammates without the scans
+scripts/         downloads; export_samples.py refreshes sample-data/
 web/             Sneha: dashboard
 ```
 
