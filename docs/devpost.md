@@ -148,15 +148,16 @@ actually fine.
 ### Best Use of Gemini
 Gemini looks at a flagged clinic's scan statistics and sample images to suggest a likely cause with
 evidence and checks, then drafts the incident report a human would otherwise write from scratch.
-Results: Gemini (gemini-3.6-flash) named the cause and rewrote the incident report for the 7 drift
-alarms from the replay, looking at 2 flagged and 2 typical training scans for each. Every cause it gave
-agreed with the rule-based check (camera or image quality, confidence 0.75 to 0.9) and added practical
-checks for the clinic; none of the reports quoted a catch rate, which can't be verified on a drift
-alarm. On the harm alarm at the faulty-software-update clinic, Gemini (gemini-3.5-flash-lite) called
-it model degradation from the software update (confidence 0.8; the clinic's description mentions the
-update) and said to audit the referral cut-off, where the rule-based check guessed a change in patient
-mix (confidence 0.55). The answers are saved in `sample-data/gemini/`, so the demo replays them with no
-API quota.
+Results: Gemini (gemini-3.5-flash-lite, and gemini-3.5-flash for one cause) named the cause and
+rewrote the incident report for all 8 alarms from the replay, looking at 2 flagged and 2 typical
+training scans for each. It sees only the clinic id, country and numbers: no site description, dataset
+name or scan id, which would give the simulated answer away (a test checks this). For the 7 drift
+alarms it named camera or image quality (confidence 0.95), matching the rule-based check, and added
+practical checks such as cleaning the lens and checking focus; none of those reports quoted a catch
+rate, which can't be verified on a drift alarm. For the faulty software update it did not find the
+real cause: like the rule-based check, it suggested a change in patient mix (confidence 0.45), because
+nothing in the scans themselves points to the update. The answers are saved in `sample-data/gemini/`,
+so the demo replays them with no API quota.
 
 ### Best Use of Tiger Data
 Scan events go into a Tiger (TimescaleDB) hypertable keyed on time, with a continuous aggregate that

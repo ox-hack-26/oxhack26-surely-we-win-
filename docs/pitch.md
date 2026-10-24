@@ -99,8 +99,9 @@ Short, honest answers. Numbers are from `docs/results.md`; recheck them if the m
 - **Is this real data?** Real public retinal scans (EyePACS, Messidor-2, APTOS, IDRiD), but the 10
   clinics, the camera wear and the update are simulated, and the model is a stand-in (validation AUC
   0.78). The datasets have no demographics, so we make no fairness claims about patients.
-- **Does Gemini just guess?** It sees the scan statistics and 2 flagged plus 2 training scans. On all
-  7 drift alarms its cause matched our rule-based check (camera or image quality). On the software
-  update it named the update, but the clinic's description mentions it, so we don't count that one.
+- **Does Gemini just guess?** It sees the scan statistics and 2 flagged plus 2 training scans, but no
+  site description or dataset name. On all 7 drift alarms it named camera or image quality, matching
+  our rule-based check. On the software update it guessed a change in patient mix, as the rules did:
+  nothing in the scans points to the update, which is exactly why the harm alarm matters.
 - **What would you need for a real deployment?** The fine-tuned model, real clinic data with real
   camera changes, and clinics setting their own costs; then a human review loop feeding back confirmed causes.
