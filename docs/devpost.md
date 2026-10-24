@@ -170,9 +170,6 @@ Scan events go into a Tiger (TimescaleDB) hypertable keyed on time, with a conti
 rolls them up per clinic-week (`db/schema.sql`); the dashboard reads its weekly monitoring table from
 Tiger Cloud. [TBD: confirm the live tables are loaded before submitting.]
 
-### Best Use of Vultr
-[TBD: only include if Sarah's model/backend actually runs on Vultr]
-
 ## Data and credits
 
 - EyePACS diabetic retinopathy dataset
