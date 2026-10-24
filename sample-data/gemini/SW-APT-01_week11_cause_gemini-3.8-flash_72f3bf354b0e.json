@@ -1,0 +1,24 @@
+{
+  "tag": "SW-APT-01_week11_cause",
+  "model": "gemini-3.8-flash",
+  "kind": "json",
+  "response": {
+    "likely_cause": "Significant reduction in image resolution, sharpness, and overall image quality consistent with a camera change, faulty capture settings, or downsampling.",
+    "category": "camera or image quality",
+    "evidence": [
+      "Drift score is 1.00, indicating scan characteristics diverge entirely from the training baseline.",
+      "Mean image resolution decreased by 78.1% from 1020.0 px in training to 224.0 px in the flagged week.",
+      "Mean sharpness dropped by 81.1% from 0.000399 to 7.53e-05.",
+      "Mean quality score dropped by 77.3% from 0.5 to 0.113.",
+      "Mean contrast decreased by 32.0% from 0.0963 to 0.0655, and mean brightness decreased by 15.5% from 0.373 to 0.315.",
+      "Referral rate increased by 31.5% from 0.685 to 0.9, with referral score mean rising from 0.193 to 0.392 (+103.2%) across 50 scans."
+    ],
+    "confidence": 0.85,
+    "recommended_checks": [
+      "Verify the camera hardware and export settings to determine why image resolution fell to 224 pixels.",
+      "Check for recent software updates, compression configurations, or pipeline transformations resizing incoming images.",
+      "Inspect camera optics for focus calibration and lens cleanliness.",
+      "Review clinical intake logs to determine if high-severity pathology is also overrepresented alongside image degradation."
+    ]
+  }
+}
