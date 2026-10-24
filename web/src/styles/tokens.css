@@ -1,0 +1,88 @@
+/* Design tokens. Mirrors MASTER.md: change it there first. */
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --ground: #0d0d0d;
+  --panel: #1a1a19;
+  --panel-2: #232321;
+  --panel-3: #2c2c2a;
+  --hairline: rgba(255, 255, 255, 0.10);
+  --hairline-strong: rgba(255, 255, 255, 0.28);
+  --axis: #383835;
+
+  /* Ink */
+  --ink: #f0efec;
+  --ink-bright: #ffffff;
+  --ink-2: #c3c2b7;
+  --muted: #898781;
+
+  /* Data, one colour per idea */
+  --belief: #3987e5;
+  --grades: #d95926;
+  --drift: #199e70;
+  --estimate: #c98500;
+  --alarm: #d03b3b;
+
+  /* Type */
+  --font-sans: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+  --text-caption: 12px;
+  --lh-caption: 16px;
+  --text-label: 13px;
+  --lh-label: 17px;
+  --text-body: 15px;
+  --lh-body: 23px;
+  --text-title: 17px;
+  --lh-title: 22px;
+  --text-heading: 20px;
+  --lh-heading: 25px;
+  --text-display: 32px;
+  --lh-display: 37px;
+  --text-readout: 56px;
+  --text-readout-sm: 24px;
+
+  /* Space, base 4 */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-12: 48px;
+  --s-16: 64px;
+
+  /* Shape and layers */
+  --r-sm: 4px;
+  --r: 6px;
+  --z-stage: 1;
+  --z-hud: 10;
+  --z-drawer: 20;
+  --z-tooltip: 30;
+  --z-modal: 40;
+  --target: 32px;
+
+  /* Motion */
+  --ease-ui: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-data: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-exit: cubic-bezier(0.55, 0, 1, 0.45);
+  --dur-ui: 200ms;
+  --dur-drawer: 320ms;
+  --dur-data: 600ms;
+  --dur-camera: 1200ms;
+  --dur-pulse: 2400ms;
+}
+
+@media (pointer: coarse) {
+  :root { --target: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not(.motion-full) {
+    --dur-ui: 0ms;
+    --dur-drawer: 0ms;
+    --dur-data: 0ms;
+    --dur-camera: 0ms;
+  }
+}

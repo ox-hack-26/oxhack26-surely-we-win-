@@ -8,7 +8,7 @@ Predicts when an eye-screening AI has quietly got worse at a clinic, weeks befor
 | --- | --- | --- |
 | Tejas | Prediction and decision engine | `clinicdrift/engine/` |
 | Sarah | Data and model | `clinicdrift/data/`, `scripts/` |
-| Sneha | Dashboard and database | `web/`, `db/` |
+| Sneha | Dashboard and database | `dashboard/`, `db/` |
 | Vansh | Alarm actions (Gemini, ElevenLabs) and pitch | `addons/` |
 
 The files each person hands to the next are defined in [docs/handoffs.md](docs/handoffs.md). Change them there first, then tell whoever reads them.
@@ -28,7 +28,8 @@ No scans on your machine? [`sample-data/`](sample-data/README.md) has the clinic
    Smallest first: IDRiD, APTOS, Messidor-2, then EyePACS (6.5 GB). Pass names to fetch only some, e.g. `python scripts/download_data.py aptos idrid`.
 4. For everything else, make a virtual environment (also outside OneDrive) and `pip install -r requirements.txt`. The add-ons have their own `requirements-addons.txt`.
 5. Real model (Sarah, needs a GPU): `python -m clinicdrift.engine.replay`, then `python -m clinicdrift.data.prepare`, `train`, `score` and `report`. Until `score` has run, the engine uses the stand-in.
-6. Run the engine on whichever model is in place: `python -m clinicdrift.engine.pipeline` checks the model's files fit the replay, then reruns estimate, decide, backtest, `docs/results.md` and `sample-data/` in one go. `--check` only checks and prints the replay fingerprint, which must match on any two machines that swap model files.
+6. Run the engine on whichever model is in place: `python -m clinicdrift.engine.pipeline` checks the model's files fit the replay, then reruns estimate, decide, backtest, `docs/results.md`, `sample-data/` and the web app's data in one go. `--check` only checks and prints the replay fingerprint, which must match on any two machines that swap model files.
+7. See it: `cd web`, `npm install`, `npm run dev`. The 3D web app replays the clinics week by week, with the cost sliders, the story and the results; [web/README.md](web/README.md) has the demo links.
 
 ## Layout
 
@@ -56,8 +57,9 @@ addons/          Vansh: Gemini cause-finding and report, ElevenLabs alert
 db/schema.sql    Sneha: Tiger Data tables
 docs/            hand-off formats
 sample-data/     small copies of the outputs for teammates without the scans
-scripts/         downloads; export_samples.py refreshes sample-data/
-web/             Sneha: dashboard
+scripts/         downloads; export_samples.py refreshes sample-data/, export_web.py the web app's data
+web/             the 3D web app (React, three.js): reads web/public/data/, written by scripts/export_web.py
+dashboard/       Sneha: Streamlit dashboard
 ```
 
 ## Data credits

@@ -5,7 +5,7 @@ The fingerprint identifies the replay's set of scans: it must match on every mac
 files are used here, or the worn-camera copies won't line up.
 
     python -m clinicdrift.engine.pipeline           # check, then estimate, decide, backtest, robustness (~2 min),
-                                                    # results, charts, samples
+                                                    # results, charts, samples, web app data
     python -m clinicdrift.engine.pipeline --check   # only check, and print the fingerprint
 """
 import argparse
@@ -76,6 +76,9 @@ def main() -> None:
         run()
     print("\n== sample data", flush=True)
     runpy.run_path(str(REPO / "scripts" / "export_samples.py"), run_name="__main__")
+    print("
+== web app data", flush=True)
+    runpy.run_path(str(REPO / "scripts" / "export_web.py"), run_name="__main__")
 
 
 if __name__ == "__main__":
