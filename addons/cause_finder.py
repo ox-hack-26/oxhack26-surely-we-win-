@@ -1,10 +1,10 @@
 """Suggest the most likely cause of a clinic's catch-rate drop.
 
-Rules compare the alarm's flagged scans with its reference (training) scans,
-using their rows in scans.parquet. If a Gemini key is set, Gemini reviews the
-same numbers (and a few of the scans themselves) and gives its own answer;
-otherwise the rule result is returned. Without scan statistics the rules
-answer "unknown" and say why.
+Rules compare the alarm's flagged scan statistics with the training ones
+(filled in from scans.parquet if the alarm lacks them). If a Gemini key is set,
+Gemini reviews the same numbers (and a few of the scans themselves) and gives
+its own answer; otherwise the rule result is returned. Without scan statistics
+the rules answer "unknown" and say why.
 """
 
 import json
@@ -24,7 +24,7 @@ CATEGORIES = [
     "unknown",
 ]
 
-IMAGE_KEYS = ["mean_brightness", "mean_sharpness", "mean_quality", "mean_resolution_px"]
+IMAGE_KEYS = ["mean_brightness", "mean_contrast", "mean_sharpness", "mean_quality", "mean_resolution_px"]
 NOTABLE = 0.15
 MIN_SCANS = 10
 
@@ -58,13 +58,13 @@ SYSTEM = (
 )
 
 
-def compute_shifts(flagged: Optional[ScanStats], reference: Optional[ScanStats]) -> dict:
-    """Relative change of each statistic from the reference scans to the flagged scans."""
-    if flagged is None or reference is None:
+def compute_shifts(flagged: Optional[ScanStats], training: Optional[ScanStats]) -> dict:
+    """Relative change of each statistic from training to the flagged scans."""
+    if flagged is None or training is None:
         return {}
     shifts = {}
     for key in STAT_KEYS:
-        f, t = getattr(flagged, key), getattr(reference, key)
+        f, t = getattr(flagged, key), getattr(training, key)
         if f is None or t is None or t == 0:
             continue
         shifts[key] = {"flagged": round(f, 3), "training": round(t, 3), "relative_change": round((f - t) / t, 3)}
@@ -80,19 +80,12 @@ def _evidence(key: str, s: dict) -> str:
     return f"{name}: {s['training']:g} -> {s['flagged']:g} ({s['relative_change']:+.0%})"
 
 
-def _alarm_evidence(alarm: Alarm) -> list[str]:
-    return [
-        f"drift from training: {alarm.drift:g} (0 = scans look like training)",
-        f"mean image quality this week: {alarm.quality_mean:g}",
-    ]
-
-
 def rule_cause(alarm: Alarm, ev: Optional[Evidence] = None) -> Cause:
     """Rule-based guess at the cause."""
-    ev = ev or Evidence()
+    ev = ev or Evidence(flagged=alarm.flagged_scan_stats, reference=alarm.training_scan_stats)
     shifts = compute_shifts(ev.flagged, ev.reference)
     notable = {k: s for k, s in shifts.items() if abs(s["relative_change"]) >= NOTABLE}
-    evidence = [_evidence(k, s) for k, s in notable.items()] + _alarm_evidence(alarm)
+    evidence = [_evidence(k, s) for k, s in notable.items()]
     image_hits = [k for k in IMAGE_KEYS if k in notable]
 
     if ev.n_scans is not None and ev.n_scans < MIN_SCANS:
@@ -109,11 +102,11 @@ def rule_cause(alarm: Alarm, ev: Optional[Evidence] = None) -> Cause:
     if not shifts:
         return Cause(
             likely_cause=(
-                "Scan statistics for the flagged and reference scans were not available, "
+                "Scan statistics for this clinic and for training were not available, "
                 "so the cause cannot be narrowed down yet."
             ),
             category="unknown",
-            evidence=evidence + ev.notes,
+            evidence=ev.notes or ["no scan statistics available"],
             confidence=0.25,
             recommended_checks=[
                 "Review the flagged scans by eye next to typical training scans",
@@ -161,7 +154,7 @@ def rule_cause(alarm: Alarm, ev: Optional[Evidence] = None) -> Cause:
     return Cause(
         likely_cause="No clear change in the images; the model itself may be behaving differently.",
         category="model degradation",
-        evidence=evidence,
+        evidence=evidence or ["no scan statistic moved by 15% or more"],
         confidence=0.35,
         recommended_checks=[
             "Confirm the deployed model version matches the validated version",
@@ -176,13 +169,12 @@ def _prompt(alarm: Alarm, ev: Evidence, rules: Cause) -> str:
     stats = json.dumps(shifts, indent=2) if shifts else "not available"
     n = ev.n_scans if ev.n_scans is not None else "unknown"
     return (
-        f"Clinic {alarm.clinic_id} ({alarm.site}, {alarm.country}), week starting {alarm.week}.\n"
-        f"Estimated catch rate this week: {alarm.est_sensitivity:.0%} "
-        f"(90% band {alarm.est_low:.0%}-{alarm.est_high:.0%}); baseline {alarm.baseline_sensitivity:.0%}.\n"
-        f"Expected referable cases missed this week: {alarm.expected_missed:g}. Scans this week: {n}.\n"
-        f"Drift from training: {alarm.drift:g} (0 = same). Mean image quality: {alarm.quality_mean:g}.\n"
-        f"Statistics of the clinic's least typical scans vs typical training scans:\n{stats}\n"
-        "(brightness is 0-255, sharpness is variance of the Laplacian, quality is 0-1, "
+        f"Clinic {alarm.clinic_id} ({alarm.site}, {alarm.country}), week {alarm.week}.\n"
+        f"Estimated catch rate this week: {alarm.estimated_catch_rate:.0%} "
+        f"(uncertainty band {alarm.ci_low:.0%}-{alarm.ci_high:.0%}); baseline {alarm.baseline_catch_rate:.0%}.\n"
+        f"Scans this week: {n}.\n"
+        f"Scan statistics, this clinic-week vs training:\n{stats}\n"
+        "(brightness and contrast are 0-1, sharpness is variance of the Laplacian, quality is 0-1, "
         "resolution is width in pixels, referral score is the classifier's probability.)\n\n"
         f"A rule-based check suggests: {rules.category} - {rules.likely_cause}\n\n"
         "Any images attached are flagged scans from this clinic and typical training scans, labelled.\n"
@@ -193,7 +185,7 @@ def _prompt(alarm: Alarm, ev: Evidence, rules: Cause) -> str:
 
 def find_cause(alarm: Alarm, ev: Optional[Evidence] = None) -> Cause:
     """Gemini's view of the cause if available, otherwise the rule result."""
-    ev = ev or Evidence()
+    ev = ev or Evidence(flagged=alarm.flagged_scan_stats, reference=alarm.training_scan_stats)
     rules = rule_cause(alarm, ev)
     result = gemini_client.generate_json(_prompt(alarm, ev, rules), CAUSE_SCHEMA, SYSTEM, images=ev.images)
     if result is None:

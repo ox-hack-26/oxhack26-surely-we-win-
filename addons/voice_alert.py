@@ -13,7 +13,7 @@ def alert_script(alarm: Alarm, cause: Cause) -> str:
     return (
         f"ClinicDrift alert for clinic {alarm.clinic_id}. "
         f"The eye screening AI's estimated catch rate has dropped from "
-        f"{alarm.baseline_sensitivity:.0%} to {alarm.est_sensitivity:.0%} this week. "
+        f"{alarm.baseline_catch_rate:.0%} to {alarm.estimated_catch_rate:.0%} this week. "
         f"The likely cause is {cause.category}. "
         f"We recommend pausing the AI at this clinic for review. "
         f"First step: {first}. "

@@ -1,7 +1,6 @@
 """Offline tests for the add-ons: no API keys, no network."""
 
 import json
-from datetime import date
 
 import pytest
 
@@ -27,57 +26,49 @@ def alarm():
 
 
 @pytest.fixture
-def ev(alarm):
-    return gather_evidence(alarm, scans_path=FAKE_SCANS, with_images=False)
+def stripped(alarm):
+    """The fixture alarm without its stats, as if the engine only sent scan ids."""
+    return alarm.model_copy(update={"flagged_scan_stats": None, "training_scan_stats": None})
 
 
 def test_fixture_matches_handoffs_format(alarm):
-    assert alarm.clinic_id == "messidor2-a"
-    assert alarm.week == date(2026, 3, 2)
-    assert alarm.est_sensitivity == 0.71
-    assert alarm.site == "Messidor-2"
-    assert alarm.country == "France"
-    assert alarm.stem == "messidor2-a_2026-03-02"
-    assert alarm_path("messidor2-a", "2026-03-02").name == "messidor2-a_2026-03-02.json"
+    assert alarm.clinic_id == "FR-MES-03"
+    assert alarm.week == 7
+    assert alarm.flagged_scan_stats.n_scans == 64
+    assert alarm.training_scan_stats.mean_contrast == 0.27
+    assert alarm.flagged_scan_ids == ["messidor2-00042", "messidor2-00057"]
+    assert alarm.reference_scan_ids == ["eyepacs-01234", "eyepacs-05678"]
+    assert alarm.stem == "FR-MES-03_week7"
+    assert alarm_path("FR-MES-03", 7).name == "FR-MES-03_week7.json"
 
 
-def test_scan_stats_from_rows(ev):
-    assert ev.flagged.n_scans == 2
-    assert ev.reference.n_scans == 2
-    assert ev.flagged.mean_sharpness == 44.0
+def test_sharpness_shift(alarm):
+    s = compute_shifts(alarm.flagged_scan_stats, alarm.training_scan_stats)["mean_sharpness"]
+    assert s["flagged"] == 0.44
+    assert s["training"] == 0.71
+    assert s["relative_change"] == round((0.44 - 0.71) / 0.71, 3)
+
+
+def test_alarm_stats_take_priority(alarm):
+    ev = gather_evidence(alarm, scans_path=FAKE_SCANS, with_images=False)
+    assert ev.flagged is alarm.flagged_scan_stats
+    assert ev.n_scans == 64
+    assert ev.notes == []
+
+
+def test_missing_stats_filled_from_scans(stripped):
+    ev = gather_evidence(stripped, scans_path=FAKE_SCANS, with_images=False)
+    assert ev.flagged.n_scans == 2 and ev.reference.n_scans == 2
+    assert ev.flagged.mean_contrast == pytest.approx(0.21)
     assert ev.reference.referral_rate == 0.5
+    assert ev.n_scans is None  # flagged ids are a sample, not the whole week
+    assert rule_cause(stripped, ev).category == "camera or image quality"
 
 
-def test_sharpness_shift(ev):
-    s = compute_shifts(ev.flagged, ev.reference)["mean_sharpness"]
-    assert s["flagged"] == 44.0
-    assert s["training"] == 115.0
-    assert s["relative_change"] == round((44 - 115) / 115, 3)
-
-
-def test_fixture_points_to_camera(alarm, ev):
-    assert rule_cause(alarm, ev).category == "camera or image quality"
-
-
-def test_population_shift_when_images_match_training(alarm, ev):
-    flagged = ev.reference.model_copy(update={"referral_rate": 0.1, "referral_score_mean": 0.2})
-    cause = rule_cause(alarm, Evidence(flagged=flagged, reference=ev.reference))
-    assert cause.category == "patient population shift"
-
-
-def test_too_few_scans_is_unknown(alarm, ev):
-    ev.n_scans = 5
-    cause = rule_cause(alarm, ev)
+def test_no_stats_anywhere_is_unknown_with_note(stripped, tmp_path):
+    ev = gather_evidence(stripped, scans_path=tmp_path / "missing.parquet", with_images=False)
+    cause = rule_cause(stripped, ev)
     assert cause.category == "unknown"
-    assert cause.confidence == 0.2
-
-
-def test_no_scan_data_is_unknown_with_note(alarm, tmp_path):
-    ev = gather_evidence(alarm, scans_path=tmp_path / "missing.parquet", with_images=False)
-    assert ev.flagged is None and ev.notes
-    cause = rule_cause(alarm, ev)
-    assert cause.category == "unknown"
-    assert any("drift" in e for e in cause.evidence)
     assert any("unavailable" in e for e in cause.evidence)
 
 
@@ -85,23 +76,41 @@ def test_load_scan_rows_ignores_unknown_ids():
     assert load_scan_rows(["nope-1"], FAKE_SCANS) == []
 
 
-def test_find_cause_uses_rules_offline(alarm, ev):
-    assert find_cause(alarm, ev).source == "rules"
+def test_fixture_points_to_camera(alarm):
+    assert rule_cause(alarm).category == "camera or image quality"
 
 
-def test_template_report(alarm, ev):
-    md = template_report(alarm, rule_cause(alarm, ev))
+def test_population_shift_when_images_match_training(alarm):
+    training = alarm.training_scan_stats
+    flagged = training.model_copy(update={"n_scans": 64, "referral_rate": 0.14})
+    cause = rule_cause(alarm, Evidence(flagged=flagged, reference=training, n_scans=64))
+    assert cause.category == "patient population shift"
+
+
+def test_too_few_scans_is_unknown(alarm):
+    flagged = alarm.flagged_scan_stats.model_copy(update={"n_scans": 5})
+    a = alarm.model_copy(update={"flagged_scan_stats": flagged})
+    cause = rule_cause(a, gather_evidence(a, with_images=False))
+    assert cause.category == "unknown"
+    assert cause.confidence == 0.2
+
+
+def test_find_cause_uses_rules_offline(alarm):
+    assert find_cause(alarm).source == "rules"
+
+
+def test_template_report(alarm):
+    md = template_report(alarm, rule_cause(alarm), 64)
     assert "DRAFT" in md
     assert "7.3" in md
-    assert "71%" in md and "88%" in md
-    assert "2026-03-02" in md
-    assert "4.2" in md
+    assert "71%" in md and "89%" in md
+    assert "week 7 (starting 2026-03-02)" in md
 
 
-def test_voice_script_and_no_key(alarm, ev):
-    script = alert_script(alarm, rule_cause(alarm, ev))
-    assert "messidor2-a" in script
-    assert "88% to 71%" in script
+def test_voice_script_and_no_key(alarm):
+    script = alert_script(alarm, rule_cause(alarm))
+    assert "FR-MES-03" in script
+    assert "89% to 71%" in script
     assert speak(script, "alert.mp3") is None
 
 
@@ -110,6 +119,6 @@ def test_run_end_to_end(tmp_path):
     assert summary["cause_source"] == "rules"
     assert summary["report_source"] == "template"
     assert summary["alert_audio"] is None
-    cause = json.loads((tmp_path / "messidor2-a_2026-03-02_cause.json").read_text(encoding="utf-8"))
+    cause = json.loads((tmp_path / "FR-MES-03_week7_cause.json").read_text(encoding="utf-8"))
     assert cause["category"] == "camera or image quality"
-    assert (tmp_path / "messidor2-a_2026-03-02_incident_report.md").is_file()
+    assert (tmp_path / "FR-MES-03_week7_incident_report.md").is_file()

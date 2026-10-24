@@ -1,9 +1,10 @@
 """Optional extra evidence for an alarm, read from the other hand-off files.
 
-The alarm itself only lists scan ids. When scans.parquet, weekly.parquet or
-clinicdrift.data.load_image are available, they give the cause finder image
-statistics, the week's scan count and sample images. Each piece is optional:
-anything missing comes back empty and the add-ons carry on without it.
+The alarm normally carries flagged_scan_stats and training_scan_stats. If either
+is missing, it is rebuilt from the scans.parquet rows for flagged_scan_ids or
+reference_scan_ids; weekly.parquet gives the week's scan count, and
+clinicdrift.data.load_image gives sample images for Gemini. Each piece is
+optional: anything missing comes back empty and the add-ons carry on without it.
 """
 
 import io
@@ -52,14 +53,14 @@ def load_scan_rows(scan_ids, scans_path=None) -> list[dict]:
 def weekly_n_scans(alarm: Alarm, weekly_path=None) -> Optional[int]:
     """n_scans for this clinic and week from weekly.parquet, if it exists."""
     path = Path(weekly_path) if weekly_path else WEEKLY_PATH
-    if not path.is_file():
+    if not alarm.week_start or not path.is_file():
         return None
     try:
         import pandas as pd
 
         df = pd.read_parquet(path)
         weeks = pd.to_datetime(df["week"]).dt.date
-        row = df[(df["clinic_id"] == alarm.clinic_id) & (weeks == alarm.week)]
+        row = df[(df["clinic_id"] == alarm.clinic_id) & (weeks == pd.Timestamp(alarm.week_start).date())]
         return int(row["n_scans"].iloc[0]) if len(row) else None
     except Exception as e:
         print(f"[weekly] could not read {path.name}: {type(e).__name__}: {e}")
@@ -97,14 +98,23 @@ def load_images(scan_ids, caption: str) -> list:
 
 
 def gather_evidence(alarm: Alarm, scans_path=None, weekly_path=None, with_images=True) -> Evidence:
-    """Everything the add-ons can find about this alarm beyond the alarm file itself."""
-    ev = Evidence(
-        flagged=summarise(load_scan_rows(alarm.flagged_scan_ids, scans_path)),
-        reference=summarise(load_scan_rows(alarm.reference_scan_ids, scans_path)),
-        n_scans=weekly_n_scans(alarm, weekly_path),
-    )
+    """The alarm's own stats, filled in from the other hand-off files where they are missing."""
+    ev = Evidence(flagged=alarm.flagged_scan_stats, reference=alarm.training_scan_stats)
+    if ev.flagged is None:
+        ev.flagged = summarise(load_scan_rows(alarm.flagged_scan_ids, scans_path))
+        if ev.flagged is not None:
+            ev.notes.append(f"flagged stats computed from {ev.flagged.n_scans} flagged scans in scans.parquet")
+    if ev.reference is None:
+        ev.reference = summarise(load_scan_rows(alarm.reference_scan_ids, scans_path))
+        if ev.reference is not None:
+            ev.notes.append(f"training stats computed from {ev.reference.n_scans} reference scans in scans.parquet")
     if ev.flagged is None or ev.reference is None:
-        ev.notes.append("scan statistics unavailable (scans.parquet missing or scan ids not in it)")
+        ev.notes.append("scan statistics unavailable (not in the alarm, and scans.parquet missing or scan ids not in it)")
+    # flagged_scan_stats covers the whole clinic-week; stats built from flagged ids are only a sample
+    if alarm.flagged_scan_stats is not None:
+        ev.n_scans = alarm.flagged_scan_stats.n_scans
+    else:
+        ev.n_scans = weekly_n_scans(alarm, weekly_path)
     if with_images:
         ev.images = load_images(alarm.flagged_scan_ids, "Flagged scan from this clinic")
         ev.images += load_images(alarm.reference_scan_ids, "Typical training scan")

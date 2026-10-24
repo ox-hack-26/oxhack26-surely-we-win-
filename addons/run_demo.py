@@ -45,7 +45,7 @@ def run(alarm_path=DEFAULT_ALARM, scans_path=None, weekly_path=None) -> dict:
 
     return {
         "clinic_id": alarm.clinic_id,
-        "week": alarm.week.isoformat(),
+        "week": alarm.week,
         "cause_category": cause.category,
         "cause_confidence": cause.confidence,
         "cause_source": cause.source,

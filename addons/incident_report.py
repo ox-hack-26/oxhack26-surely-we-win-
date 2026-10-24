@@ -10,10 +10,6 @@ from . import gemini_client
 from .alarm_schema import Alarm
 from .cause_finder import Cause
 
-# Not part of the alarm file (docs/handoffs.md); fixed for this prototype.
-DEVICE_NAME = "ClinicDrift-monitored DR screening model"
-DEVICE_VERSION = "v1.0"
-
 MIT_RISKS = {
     "1.3": "Discrimination & toxicity > Unequal performance across groups",
     "3.1": "Misinformation > False or misleading information",
@@ -41,30 +37,40 @@ def template_report(alarm: Alarm, cause: Cause, n_scans: Optional[int] = None) -
     checks = "\n".join(f"- [ ] {c}" for c in cause.recommended_checks) or "- [ ] none recorded"
     tags = "\n".join(f"- {t} {MIT_RISKS[t]}" for t in mit_tags(cause))
     based_on = f"{n_scans} scans from this week" if n_scans is not None else "this week's scans"
+    when = f"week {alarm.week}" + (f" (starting {alarm.week_start})" if alarm.week_start else "")
+    missed = (
+        f"about {alarm.expected_missed_cases:g} referable cases may have been missed"
+        if alarm.expected_missed_cases is not None
+        else "the number of possibly missed cases is not yet estimated"
+    )
+    action = (
+        "Expected harm exceeds the cost of review, so we recommend pausing the AI at this clinic "
+        "and sending its scans for human grading until the checks below are complete."
+        if alarm.expected_harm > alarm.review_cost
+        else "Expected harm does not exceed the cost of review; we recommend continued close monitoring."
+    )
     return f"""# DRAFT: Medical device adverse incident report
 
 > This is a draft for human review. It has not been submitted. A manufacturer would report
 > through the MHRA MORE portal; healthcare professionals and users report through the Yellow Card scheme.
 
 ## 1. Device
-- Name: {DEVICE_NAME}
-- Version: {DEVICE_VERSION}
+- Name: {alarm.device_name}
+- Version: {alarm.device_version}
 - Intended use: screening retinal photographs for referable diabetic retinopathy
 
 ## 2. Where and when
 - Clinic: {alarm.clinic_id} ({alarm.site}, {alarm.country})
-- Period: week starting {alarm.week.isoformat()}
+- Period: {when}
 
 ## 3. What happened
 ClinicDrift estimates the AI's catch rate (sensitivity for referable disease) at this clinic fell to
-{_pct(alarm.est_sensitivity)} (90% band {_pct(alarm.est_low)} to {_pct(alarm.est_high)}), against a
-baseline of {_pct(alarm.baseline_sensitivity)}. The estimate is predicted from {based_on} alone;
-expert grades for these scans have not yet arrived. This week's scans differ from training
-(drift {alarm.drift:g}, where 0 means no difference) and their mean image quality is {alarm.quality_mean:g}.
+{_pct(alarm.estimated_catch_rate)} (band {_pct(alarm.ci_low)} to {_pct(alarm.ci_high)}), against a
+baseline of {_pct(alarm.baseline_catch_rate)}. The estimate is predicted from {based_on} alone;
+expert grades for these scans have not yet arrived.
 
 ## 4. Potential patient impact
-If the estimate is right, about {alarm.expected_missed:g} referable cases may have been missed this week.
-No patient harm has been confirmed.
+If the estimate is right, {missed}. No patient harm has been confirmed.
 
 ## 5. Likely cause
 {cause.likely_cause} (category: {cause.category}; confidence {cause.confidence:.0%}; source: {cause.source})
@@ -73,9 +79,8 @@ Evidence:
 {evidence}
 
 ## 6. Action
-The alarm fired because the expected cost of missed cases (expected missed cases x cost per missed case)
-exceeded the cost of reviewing this clinic's scans. We recommend pausing the AI at this clinic and
-sending its scans for human grading until the checks below are complete.
+Expected harm: {alarm.expected_harm:g}. Cost of review: {alarm.review_cost:g}.
+{action}
 
 Checks:
 {checks}
