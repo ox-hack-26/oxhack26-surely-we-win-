@@ -1,0 +1,8 @@
+{
+  "model": "stand-in: ImageNet ResNet-50 features + logistic regression",
+  "C": 0.003,
+  "referral_threshold": 0.060225389897823334,
+  "val_auc": 0.7778540970511132,
+  "val_sensitivity": 0.8992248062015504,
+  "val_specificity": 0.3490566037735849
+}

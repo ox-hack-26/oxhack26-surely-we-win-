@@ -1,0 +1,53 @@
+{
+  "clinic_id": "IN-APT-02",
+  "site": "APTOS 2019",
+  "country": "India",
+  "week": 1,
+  "week_start": "2026-01-05",
+  "estimated_catch_rate": 0.5,
+  "ci_low": 0.05,
+  "ci_high": 0.95,
+  "baseline_catch_rate": 0.8992248062015504,
+  "expected_missed_cases": 7.807069301605225,
+  "expected_harm": 380149.5889643752,
+  "review_cost": 25000,
+  "referral_threshold": 0.060225389897823334,
+  "alarm_reason": "drift",
+  "drift_auc": 0.98924,
+  "flagged_scan_stats": {
+    "n_scans": 50,
+    "mean_brightness": 0.2978612047433853,
+    "mean_contrast": 0.06483556739985943,
+    "mean_sharpness": 6.864858252811246e-05,
+    "mean_quality": 0.108165,
+    "mean_resolution_px": 224.0,
+    "referral_score_mean": 0.33982476592063904,
+    "referral_rate": 0.82
+  },
+  "training_scan_stats": {
+    "n_scans": 8000,
+    "mean_brightness": 0.3725177582898177,
+    "mean_contrast": 0.09630700049304869,
+    "mean_sharpness": 0.0003985424103721016,
+    "mean_quality": 0.499937484375,
+    "mean_resolution_px": 1023.14325,
+    "referral_score_mean": 0.1927846521139145,
+    "referral_rate": 0.684625
+  },
+  "flagged_scan_ids": [
+    "aptos-01346",
+    "aptos-03107",
+    "aptos-01558",
+    "aptos-00430",
+    "aptos-02896",
+    "aptos-02310"
+  ],
+  "reference_scan_ids": [
+    "eyepacs-18674",
+    "eyepacs-14837",
+    "eyepacs-31687",
+    "eyepacs-33378",
+    "eyepacs-03709",
+    "eyepacs-07185"
+  ]
+}

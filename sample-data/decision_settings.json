@@ -1,0 +1,15 @@
+{
+  "costs": {
+    "missed_case": 10000,
+    "false_referral": 150,
+    "review": 25000,
+    "horizon_weeks": 6
+  },
+  "reference": {
+    "catch_rate": 0.8992248062015504,
+    "specificity": 0.3490566037735849,
+    "prevalence": 0.18965010291090856
+  },
+  "drift_trusted": 0.7,
+  "drift_untrusted": 0.9
+}
