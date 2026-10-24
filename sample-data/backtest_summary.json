@@ -1,38 +1,38 @@
 [
   {
     "policy":"wait for grades",
-    "clinics_caught":1,
-    "clinics_changed":7,
+    "clinics_caught":2,
+    "clinics_changed":8,
     "false_alarms":0,
-    "median_weeks_to_alarm":12.0,
-    "extra_missed_cases":29.3,
-    "total_cost_gbp":376800.0
+    "median_weeks_to_alarm":6.0,
+    "extra_missed_cases":33.3,
+    "total_cost_gbp":439700.0
   },
   {
     "policy":"watch estimate",
-    "clinics_caught":0,
-    "clinics_changed":7,
+    "clinics_caught":1,
+    "clinics_changed":8,
     "false_alarms":0,
-    "median_weeks_to_alarm":null,
+    "median_weeks_to_alarm":0.0,
     "extra_missed_cases":29.3,
-    "total_cost_gbp":356500.0
+    "total_cost_gbp":381500.0
   },
   {
     "policy":"watch drift",
     "clinics_caught":7,
-    "clinics_changed":7,
+    "clinics_changed":8,
     "false_alarms":0,
     "median_weeks_to_alarm":1.0,
-    "extra_missed_cases":0.5,
-    "total_cost_gbp":183600.0
+    "extra_missed_cases":20.3,
+    "total_cost_gbp":382000.0
   },
   {
     "policy":"ClinicDrift",
-    "clinics_caught":7,
-    "clinics_changed":7,
+    "clinics_caught":8,
+    "clinics_changed":8,
     "false_alarms":0,
     "median_weeks_to_alarm":0.0,
-    "extra_missed_cases":0.0,
-    "total_cost_gbp":175300.0
+    "extra_missed_cases":2.3,
+    "total_cost_gbp":223200.0
   }
 ]

@@ -8,12 +8,12 @@
   "ci_low": 0.05,
   "ci_high": 0.95,
   "baseline_catch_rate": 0.8992248062015504,
-  "expected_missed_cases": 6.865170478820801,
-  "expected_harm": 337673.77290637157,
+  "expected_missed_cases": 6.865170001983643,
+  "expected_harm": 337673.75049169833,
   "review_cost": 25000,
   "referral_threshold": 0.060225389897823334,
   "alarm_reason": "drift",
-  "drift_auc": 0.98772,
+  "drift_auc": 0.9893599999999999,
   "flagged_scan_stats": {
     "n_scans": 50,
     "mean_brightness": 0.3340021708607674,
@@ -21,7 +21,7 @@
     "mean_sharpness": 0.00022210811628610826,
     "mean_quality": 0.19296,
     "mean_resolution_px": 2065.92,
-    "referral_score_mean": 0.29909709095954895,
+    "referral_score_mean": 0.29909712076187134,
     "referral_rate": 0.86
   },
   "training_scan_stats": {

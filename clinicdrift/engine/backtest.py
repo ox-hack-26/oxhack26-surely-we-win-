@@ -21,7 +21,7 @@ import pandas as pd
 from clinicdrift.config import PROCESSED_DIR
 from clinicdrift.engine import decide
 from clinicdrift.engine.decide import GRADE_WINDOW, POOL_WEEKS, Costs, reference_levels
-from clinicdrift.engine.estimate import load_inputs
+from clinicdrift.engine.estimate import load_inputs, referral_thresholds
 
 SWEEP_REVIEW_COSTS = (5_000, 10_000, 25_000, 50_000, 100_000)
 
@@ -35,8 +35,10 @@ def change_week(clinic: dict) -> int | None:
     """Week the clinic's conditions changed; None if they never did."""
     if clinic["switch_week"]:
         return clinic["switch_week"]
-    if clinic["wear_from_week"]:
+    if clinic.get("wear_from_week"):
         return clinic["wear_from_week"]
+    if clinic.get("update_from_week"):
+        return clinic["update_from_week"]
     first_source = clinic["segments"][0]["source"]
     return 1 if first_source != "eyepacs" else None
 
@@ -83,7 +85,7 @@ def run(costs: Costs = Costs(), weekly: pd.DataFrame | None = None) -> pd.DataFr
         weekly = pd.read_parquet(PROCESSED_DIR / "weekly.parquet")
     stream = pd.read_parquet(PROCESSED_DIR / "stream.parquet")
     seen = stream.merge(scans[["scan_id", "referable", "p_referable"]], on="scan_id", validate="one_to_one")
-    seen["referred"] = seen["p_referable"] >= model["referral_threshold"]
+    seen["referred"] = seen["p_referable"].to_numpy() >= referral_thresholds(seen, scans, model)
     graded = seen[seen["graded_at"].notna()]
     clinics = {c["clinic_id"]: c for c in json.loads((PROCESSED_DIR / "clinics.json").read_text(encoding="utf-8"))}
 
