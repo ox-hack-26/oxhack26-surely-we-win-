@@ -59,6 +59,11 @@ SYSTEM = (
 )
 
 
+def _sig(x: float) -> float:
+    """x to 3 significant figures, so tiny values like sharpness 0.000398 don't round to 0."""
+    return float(f"{x:.3g}")
+
+
 def compute_shifts(flagged: Optional[ScanStats], training: Optional[ScanStats]) -> dict:
     """Relative change of each statistic from training to the flagged scans."""
     if flagged is None or training is None:
@@ -68,7 +73,7 @@ def compute_shifts(flagged: Optional[ScanStats], training: Optional[ScanStats]) 
         f, t = getattr(flagged, key), getattr(training, key)
         if f is None or t is None or t == 0:
             continue
-        shifts[key] = {"flagged": round(f, 3), "training": round(t, 3), "relative_change": round((f - t) / t, 3)}
+        shifts[key] = {"flagged": _sig(f), "training": _sig(t), "relative_change": round((f - t) / t, 3)}
     return shifts
 
 

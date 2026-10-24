@@ -59,6 +59,14 @@ def test_sharpness_shift(alarm):
     assert s["relative_change"] == round((0.44 - 0.71) / 0.71, 3)
 
 
+def test_small_values_keep_significant_figures(drift_alarm):
+    s = compute_shifts(drift_alarm.flagged_scan_stats, drift_alarm.training_scan_stats)
+    assert s["mean_sharpness"]["flagged"] == 0.000222
+    assert s["mean_sharpness"]["training"] == 0.000399
+    assert s["mean_resolution_px"]["training"] == 1020
+    assert "mean sharpness: 0.000399 -> 0.000222 (-44%)" in rule_cause(drift_alarm).evidence
+
+
 def test_alarm_stats_take_priority(alarm):
     ev = gather_evidence(alarm, scans_path=FAKE_SCANS, with_images=False)
     assert ev.flagged is alarm.flagged_scan_stats
