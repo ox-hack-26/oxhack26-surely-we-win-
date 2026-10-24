@@ -24,7 +24,7 @@ The files each person hands to the next are defined in [docs/handoffs.md](docs/h
    ```
 
    Smallest first: IDRiD, APTOS, Messidor-2, then EyePACS (6.5 GB). Pass names to fetch only some, e.g. `python scripts/download_data.py aptos idrid`.
-4. For everything else, make a virtual environment (also outside OneDrive) and `pip install -r requirements.txt`.
+4. For everything else, make a virtual environment (also outside OneDrive) and `pip install -r requirements.txt`. The add-ons have their own `requirements-addons.txt`.
 
 ## Layout
 

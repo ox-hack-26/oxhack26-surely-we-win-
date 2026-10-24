@@ -4,6 +4,7 @@
 # data and outputs live outside the repo (CLINICDRIFT_DATA); this catches strays
 /data/
 /outputs/
+addons/out/
 *.parquet
 *.npy
 
