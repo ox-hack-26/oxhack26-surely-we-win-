@@ -11,6 +11,7 @@ Each connection to Hugging Face tops out at a few MB/s, so several files downloa
 """
 import argparse
 import json
+import threading
 from concurrent.futures import ThreadPoolExecutor
 import sys
 import time
@@ -32,6 +33,11 @@ FILE_URL = "https://huggingface.co/datasets/{repo}/resolve/main/{path}"
 CHUNK = 1 << 20
 RETRIES = 10  # each retry resumes, so flaky wifi still makes progress
 JOBS = 6      # files downloading at once
+STOP = threading.Event()  # set on Ctrl-C: every file stops between chunks and resumes next run
+
+
+class Stopped(Exception):
+    """Not an OSError, so the retry loop lets it through."""
 
 
 def list_files(repo: str) -> list[dict]:
@@ -54,6 +60,8 @@ def fetch(url: str, dest: Path, size: int) -> None:
                 have = 0
             start, done, next_report = time.time(), have, have + 100 * CHUNK
             while chunk := resp.read(CHUNK):
+                if STOP.is_set():
+                    raise Stopped
                 out.write(chunk)
                 done += len(chunk)
                 if done >= next_report:
@@ -80,7 +88,8 @@ def get_file(name: str, repo: str, f: dict) -> None:
             print(f"    {name}/{f['path']}: attempt {attempt} failed: {err}", flush=True)
             if attempt == RETRIES:
                 raise
-            time.sleep(5 * attempt)
+            if STOP.wait(5 * attempt):
+                raise Stopped
     if dest.stat().st_size != size:
         raise RuntimeError(f"{dest} is {dest.stat().st_size} bytes, expected {size}")
     print(f"  done {name}/{f['path']}", flush=True)
@@ -94,9 +103,19 @@ def download(names: list[str], jobs: int) -> None:
         print(f"== {name} ({SOURCES[name]}): {len(files)} files, {sum(f.get('size', 0) for f in files) / 1e6:,.0f} MB",
               flush=True)
         queue += [(name, SOURCES[name], f) for f in files]
-    with ThreadPoolExecutor(max_workers=jobs) as pool:
-        for future in [pool.submit(get_file, *job) for job in queue]:
+    pool = ThreadPoolExecutor(max_workers=jobs)
+    futures = [pool.submit(get_file, *job) for job in queue]
+    try:
+        for future in futures:
+            while not future.done():  # a short wait, so Ctrl-C gets through on Windows too
+                threading.Event().wait(0.5)
             future.result()  # re-raises a file's final failure
+    except KeyboardInterrupt:
+        print("Stopping; partial files resume next run", flush=True)
+        STOP.set()
+        raise
+    finally:
+        pool.shutdown(wait=True, cancel_futures=True)
 
 
 def main() -> None:

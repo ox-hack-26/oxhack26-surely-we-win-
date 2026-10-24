@@ -81,10 +81,11 @@ def prepare(data: bytes, wear: float = 0.0) -> tuple[np.ndarray, dict]:
     return resize(square, CACHE_SIZE), {"width": width, "height": height, **stats}
 
 
-def _ramp(x: pd.Series, reference: pd.Series, good: float, bad: float) -> pd.Series:
-    """1 at the reference's `good` quantile, 0 as far beyond its `bad` quantile again, linear between."""
+def _ramp(x: pd.Series, reference: pd.Series, good: float, bad: float, zero: float | None = None) -> pd.Series:
+    """1 at the reference's `good` quantile, 0 at `zero` (default: as far beyond its `bad` quantile
+    again), linear between."""
     one, edge = reference.quantile(good), reference.quantile(bad)
-    zero = edge - (one - edge)
+    zero = edge - (one - edge) if zero is None else zero
     return ((x - zero) / (one - zero)).clip(0, 1)
 
 
@@ -92,11 +93,12 @@ def quality_score(stats: pd.DataFrame, reference: pd.DataFrame) -> pd.Series:
     """0-1 image quality: the worst of sharpness, contrast and exposure, judged against the training scans.
 
     Each aspect scores 1 when it is at least as good as the training scans' 25th percentile (for
-    exposure, inside their 25th-75th), 0.5 at their 1st percentile (99th for over-exposure), and 0
-    as far past that again. So a typical training scan scores 1, the worst training scans about 0.5,
-    and a blurred, washed-out or dark scan lower still, falling steadily as it gets worse.
+    exposure, inside their 25th-75th). Contrast and exposure fall to 0.5 at the training scans' 1st
+    percentile (99th for over-exposure) and to 0 as far past that again. Sharpness, on a log scale,
+    falls linearly to 0 only at no sharpness at all, so a camera that blurs a little more each week
+    loses a little more quality each week. The median training scan scores about 0.9.
     """
-    sharpness = _ramp(np.log1p(stats["sharpness"]), np.log1p(reference["sharpness"]), 0.25, 0.01)
+    sharpness = _ramp(np.log1p(stats["sharpness"]), np.log1p(reference["sharpness"]), 0.25, 0.01, zero=0.0)
     contrast = _ramp(stats["contrast"], reference["contrast"], 0.25, 0.01)
     b, rb = stats["brightness"], reference["brightness"]
     exposure = np.minimum(_ramp(b, rb, 0.25, 0.01), _ramp(b, rb, 0.75, 0.99))

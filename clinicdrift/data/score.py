@@ -71,13 +71,13 @@ def main() -> None:
     val = eyepacs & (scans["split"] == "val").to_numpy()
     test = eyepacs & (scans["split"] == "test").to_numpy()
     temperature = fit_temperature(logits[val], y[val])
-    p = 1 / (1 + np.exp(-logits / temperature))
+    p = (1 / (1 + np.exp(-logits / temperature))).astype(np.float32)  # exactly what scans.parquet stores
     threshold = threshold_for_sensitivity(p[val], y[val], TARGET_SENSITIVITY)
     val_rates, test_rates = rates(p[val], y[val], threshold), rates(p[test], y[test], threshold)
 
     info = {
         "model": f"{ARCH} fine-tuned on EyePACS train at {CACHE_SIZE} px",
-        "referral_threshold": round(threshold, 6),
+        "referral_threshold": threshold,  # unrounded: rounding up would drop the val case that set it
         "val_sensitivity": val_rates["sensitivity"],
         "val_specificity": val_rates["specificity"],
         "val_auc": val_rates["auc"],
@@ -96,7 +96,7 @@ def main() -> None:
         "best_epoch": checkpoint["epoch"],
         "epochs": checkpoint["epochs"],
     }
-    scans["p_referable"] = p.astype("float32")
+    scans["p_referable"] = p
     scans = scans[SCAN_COLUMNS + [c for c in scans.columns if c not in SCAN_COLUMNS]]
 
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)

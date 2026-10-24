@@ -17,7 +17,7 @@ Start from `clinicdrift.data.sources.load_scans()`. It already has `scan_id`, `s
 | `referable` | bool | `grade >= 2`: the patient must be referred |
 | `wear` | float 0–1 | Camera wear applied to this copy; 0 for every untouched scan |
 | `p_referable` | float 0–1 | Classifier's probability that the scan needs referral |
-| `quality` | float 0–1 | Image quality: the worst of sharpness, contrast and exposure, scored against the EyePACS training scans. 1 for a typical training scan, about 0.5 for the worst training scans and for the blurry 224 px APTOS copies, 0 for a badly worn camera |
+| `quality` | float 0–1 | Image quality: the worst of sharpness, contrast and exposure, scored against the EyePACS training scans. Median about 0.9 for training scans, 0.7 for the 224 px APTOS copies; falls week by week as a camera wears (about 0.7, 0.5, 0.4 … 0.2 for wear 0.07 to 1.0) |
 | `brightness` | float 0–1 | Mean greyscale pixel value / 255, inside the retina (black surround left out) |
 | `contrast` | float 0–1 | Standard deviation of greyscale pixels / 255, inside the retina |
 | `sharpness` | float | Variance of the Laplacian inside the retina, measured after resizing the retina to 512 px so cameras compare fairly |

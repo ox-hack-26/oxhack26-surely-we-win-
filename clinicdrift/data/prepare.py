@@ -30,7 +30,10 @@ STAT_COLUMNS = ["width", "height", "brightness", "contrast", "sharpness"]
 
 
 def open_cache(n_rows: int, mode: str = "r") -> np.memmap:
-    return np.memmap(CACHE, dtype=np.uint8, mode=mode, shape=(n_rows, CACHE_SIZE, CACHE_SIZE, 3))
+    shape = (n_rows, CACHE_SIZE, CACHE_SIZE, 3)
+    if mode != "w+" and CACHE.stat().st_size != np.prod(shape):
+        raise SystemExit(f"{CACHE} does not hold {n_rows:,} crops; run python -m clinicdrift.data.prepare again")
+    return np.memmap(CACHE, dtype=np.uint8, mode=mode, shape=shape)
 
 
 def worn_copies(scans: pd.DataFrame) -> pd.DataFrame:
@@ -82,6 +85,7 @@ def main() -> None:
     print(f"{len(scans):,} scans (" + ", ".join(f"{s} {n:,}" for s, n in scans["source"].value_counts().items())
           + f") and {len(worn):,} worn-camera copies")
     CACHE.parent.mkdir(parents=True, exist_ok=True)
+    PREPARED.unlink(missing_ok=True)  # an old index must never sit next to a half-rewritten cache
     open_cache(len(prepared), "w+").flush()  # allocate the file; workers fill their own rows
 
     tasks, stats = _tasks(prepared), []

@@ -2,6 +2,7 @@ numpy
 pandas
 pyarrow
 pillow
+opencv-python-headless
 scikit-learn
 torch
 torchvision
