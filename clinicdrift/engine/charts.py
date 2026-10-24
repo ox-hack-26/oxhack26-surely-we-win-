@@ -9,10 +9,13 @@ Alarms are the status red, always with a marker and a label. Titles state the fi
 compute their numbers, so they stay true when the model changes.
 """
 import json
+import logging
 
 import matplotlib
 
 matplotlib.use("Agg")
+# Segoe UI has a semibold weight; the fallback fonts don't, and matplotlib warns about each one.
+logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR)
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
