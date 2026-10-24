@@ -32,8 +32,8 @@ early warning, and a clear decision about what to do.
   like the validated ones; a *harm* alarm fires when the scans look normal but it is 90% sure the
   catch rate is below the 80% UK screening standard (for example after a faulty software update).
 - **Act:** when an alarm fires, Gemini suggests the likely cause and drafts an MHRA-style incident
-  report tagged with MIT AI Risk Repository categories, and ElevenLabs reads a short spoken alert to
-  the clinic lead.
+  report tagged with MIT AI Risk Repository categories, and a short spoken alert for the clinic lead
+  is written to be read aloud by ElevenLabs (built, not yet tested with a live key).
 
 ## How we built it
 
@@ -42,7 +42,7 @@ early warning, and a clear decision about what to do.
   simulated clinics and weeks.
 - **Storage:** per-clinic, per-week results in Tiger Data.
 - **Cause finding and reports:** Gemini, with rule-based and template fallbacks so the demo works offline.
-- **Spoken alerts:** ElevenLabs text to speech.
+- **Spoken alerts:** ElevenLabs text to speech (`addons/voice_alert.py`), with the alert text as a fallback.
 - **Dashboard:** Streamlit and Plotly (`dashboard/`), reading weekly results from Tiger Cloud, with an
   explicit mock mode that is labelled as synthetic.
 
@@ -130,8 +130,10 @@ API quota.
 
 ### Best Use of ElevenLabs
 A spoken alert of under 25 seconds tells a busy clinic lead what changed, why, and the first thing to check.
-Results: [TBD: not tested yet, no ElevenLabs key set. The alert scripts are written and tested
-offline; without a key the add-ons skip the audio.]
+Results: the voice step is built in `addons/voice_alert.py`, with a text fallback: every alarm gets
+an alert script, tested offline (including that drift alerts never quote a catch rate), and without a
+key the add-ons skip the audio and keep the text. It has not been tested with a live ElevenLabs key yet,
+so no audio has been generated. [TBD: confirm with a live key or remove]
 
 ### Best Use of Tiger Data
 Scan events go into a Tiger (TimescaleDB) hypertable keyed on time, with a continuous aggregate that
