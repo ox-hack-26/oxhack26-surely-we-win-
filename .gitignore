@@ -1,0 +1,4 @@
+.env
+addons/out/
+__pycache__/
+.pytest_cache/
