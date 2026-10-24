@@ -1,0 +1,35 @@
+{
+  "clinic_id": "FR-MES-03",
+  "site": "Messidor-2",
+  "country": "France",
+  "week": 7,
+  "week_start": "2026-03-02",
+  "estimated_catch_rate": 0.71,
+  "ci_low": 0.62,
+  "ci_high": 0.79,
+  "baseline_catch_rate": 0.89,
+  "expected_harm": 4200,
+  "review_cost": 1500,
+  "expected_missed_cases": 3.4,
+  "flagged_scan_stats": {
+    "n_scans": 64,
+    "mean_brightness": 0.38,
+    "mean_contrast": 0.21,
+    "mean_sharpness": 0.44,
+    "mean_quality": 0.58,
+    "mean_resolution_px": 1440,
+    "referral_score_mean": 0.19,
+    "referral_rate": 0.14
+  },
+  "training_scan_stats": {
+    "n_scans": 35000,
+    "mean_brightness": 0.47,
+    "mean_contrast": 0.27,
+    "mean_sharpness": 0.71,
+    "mean_quality": 0.81,
+    "mean_resolution_px": 2592,
+    "referral_score_mean": 0.27,
+    "referral_rate": 0.22
+  },
+  "sample_scan_paths": []
+}
