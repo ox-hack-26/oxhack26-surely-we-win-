@@ -31,6 +31,20 @@ def _pct(x: float) -> str:
     return f"{x:.0%}"
 
 
+def _referral_change(alarm: Alarm) -> str:
+    """A sentence on the referral rate when it moved by 15% or more against training, else ""."""
+    f, t = alarm.flagged_scan_stats, alarm.training_scan_stats
+    if not f or not t or f.referral_rate is None or not t.referral_rate:
+        return ""
+    if abs(f.referral_rate - t.referral_rate) / t.referral_rate < 0.15:
+        return ""
+    more = "more" if f.referral_rate > t.referral_rate else "fewer"
+    return (
+        f" The AI is referring {more} patients than usual: {_pct(f.referral_rate)} of this week's scans, "
+        f"against {_pct(t.referral_rate)} of the training scans."
+    )
+
+
 def template_report(alarm: Alarm, cause: Cause, n_scans: Optional[int] = None) -> str:
     """Fill the report template from the alarm and cause. No network needed."""
     evidence = "\n".join(f"- {e}" for e in cause.evidence) or "- none recorded"
@@ -43,6 +57,26 @@ def template_report(alarm: Alarm, cause: Cause, n_scans: Optional[int] = None) -
         if alarm.expected_missed_cases is not None
         else "the number of possibly missed cases is not yet estimated"
     )
+    if alarm.is_drift:
+        score = f" (drift score {alarm.drift_auc:.2f}, where 0.5 means like training and 1 clearly different)" if alarm.drift_auc else ""
+        what = (
+            f"ClinicDrift found that this clinic's scans no longer look like the scans the AI was validated on{score}.\n"
+            f"Its catch rate (sensitivity for referable disease) therefore can't be verified from {based_on}, "
+            "and expert grades for these scans have not yet arrived."
+        )
+        what += _referral_change(alarm)
+        impact = (
+            "Because the catch rate can't be verified, the number of possibly missed cases is not estimated. "
+            "No patient harm has been confirmed."
+        )
+    else:
+        what = (
+            f"ClinicDrift estimates the AI's catch rate (sensitivity for referable disease) at this clinic fell to\n"
+            f"{_pct(alarm.estimated_catch_rate)} (band {_pct(alarm.ci_low)} to {_pct(alarm.ci_high)}), against a\n"
+            f"baseline of {_pct(alarm.baseline_catch_rate)}. The estimate is predicted from {based_on} alone;\n"
+            "expert grades for these scans have not yet arrived."
+        )
+        impact = f"If the estimate is right, {missed}. No patient harm has been confirmed."
     action = (
         "Expected harm exceeds the cost of review, so we recommend pausing the AI at this clinic "
         "and sending its scans for human grading until the checks below are complete."
@@ -64,13 +98,10 @@ def template_report(alarm: Alarm, cause: Cause, n_scans: Optional[int] = None) -
 - Period: {when}
 
 ## 3. What happened
-ClinicDrift estimates the AI's catch rate (sensitivity for referable disease) at this clinic fell to
-{_pct(alarm.estimated_catch_rate)} (band {_pct(alarm.ci_low)} to {_pct(alarm.ci_high)}), against a
-baseline of {_pct(alarm.baseline_catch_rate)}. The estimate is predicted from {based_on} alone;
-expert grades for these scans have not yet arrived.
+{what}
 
 ## 4. Potential patient impact
-If the estimate is right, {missed}. No patient harm has been confirmed.
+{impact}
 
 ## 5. Likely cause
 {cause.likely_cause} (category: {cause.category}; confidence {cause.confidence:.0%}; source: {cause.source})
@@ -98,7 +129,8 @@ Checks:
 SYSTEM = (
     "You edit draft medical device incident reports for a UK regulator audience. Write in British "
     "English, plainly and cautiously. Keep every number exactly as given, keep the section structure, "
-    "keep the DRAFT notice, and do not add facts that are not in the input."
+    "keep the DRAFT notice, and do not add facts that are not in the input. If the draft says the "
+    "catch rate can't be verified, do not quote a catch rate."
 )
 
 

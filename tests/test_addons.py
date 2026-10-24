@@ -1,6 +1,7 @@
 """Offline tests for the add-ons: no API keys, no network."""
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -23,6 +24,14 @@ def offline(monkeypatch, tmp_path):
 @pytest.fixture
 def alarm():
     return load_alarm(DEFAULT_ALARM)
+
+
+SAMPLE_ALARMS = sorted((Path(__file__).parents[1] / "sample-data" / "alarms").glob("*.json"))
+
+
+@pytest.fixture
+def drift_alarm():
+    return load_alarm(Path(__file__).parents[1] / "sample-data" / "alarms" / "SW-MES-01_week09.json")
 
 
 @pytest.fixture
@@ -140,3 +149,33 @@ def test_run_end_to_end(tmp_path):
     cause = json.loads((tmp_path / "FR-MES-03_week7_cause.json").read_text(encoding="utf-8"))
     assert cause["category"] == "camera or image quality"
     assert (tmp_path / "FR-MES-03_week7_incident_report.md").is_file()
+
+
+def test_drift_voice_script_quotes_no_catch_rate(drift_alarm):
+    assert drift_alarm.is_drift
+    script = alert_script(drift_alarm, rule_cause(drift_alarm))
+    assert "can't be verified" in script
+    assert "%" not in script
+
+
+def test_drift_report_quotes_no_catch_rate(drift_alarm):
+    md = template_report(drift_alarm, rule_cause(drift_alarm), 50)
+    assert "can't be verified" in md
+    assert "50%" not in md and "5% to 95%" not in md  # placeholder estimate and band
+    assert "catch rate (sensitivity for referable disease) at this clinic fell" not in md
+    assert "referable cases may have been missed" not in md
+    assert "referring more patients than usual: 86%" in md
+
+
+def test_non_drift_wording_unchanged(alarm):
+    assert not alarm.is_drift
+    assert "can't be verified" not in alert_script(alarm, rule_cause(alarm))
+    assert "fell to\n71% (band 62% to 79%)" in template_report(alarm, rule_cause(alarm), 64)
+
+
+@pytest.mark.parametrize("path", SAMPLE_ALARMS, ids=lambda p: p.stem)
+def test_sample_alarms_run_offline(path):
+    summary = run(path)
+    assert summary["alarm_reason"] == "drift"
+    assert "can't be verified" in summary["alert_script"]
+    assert "%" not in summary["alert_script"]

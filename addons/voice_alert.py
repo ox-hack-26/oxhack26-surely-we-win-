@@ -10,6 +10,15 @@ from .cause_finder import Cause
 def alert_script(alarm: Alarm, cause: Cause) -> str:
     """Alert text, short enough to read in under 25 seconds."""
     first = cause.recommended_checks[0].rstrip(".") if cause.recommended_checks else "review this week's scans"
+    if alarm.is_drift:
+        return (
+            f"ClinicDrift alert for clinic {alarm.clinic_id}. "
+            f"This clinic's scans no longer look like the ones the AI was validated on, "
+            f"so its catch rate can't be verified. "
+            f"We recommend pausing it for review. "
+            f"First step: {first}. "
+            f"A draft incident report is ready on the dashboard."
+        )
     return (
         f"ClinicDrift alert for clinic {alarm.clinic_id}. "
         f"The eye screening AI's estimated catch rate has dropped from "

@@ -60,12 +60,20 @@ class Alarm(BaseModel):
     expected_harm: float
     review_cost: float
     referral_threshold: Optional[float] = Field(default=None, ge=0, le=1)  # p_referable cut-off, from model.json
+    alarm_reason: Optional[str] = None  # "drift" or "harm"
+    drift_auc: Optional[float] = None  # 0.5 = scans look like training, near 1 = clearly different
     # Optional here so a partial alarm still works: missing stats are filled from scans.parquet.
     flagged_scan_stats: Optional[ScanStats] = None
     training_scan_stats: Optional[ScanStats] = None
     flagged_scan_ids: list[str] = []
     reference_scan_ids: list[str] = []
     sample_scan_paths: list[str] = []
+
+    @property
+    def is_drift(self) -> bool:
+        """Raised because the scans no longer look validated. The catch-rate estimate and band
+        are then placeholders (band about 5-95%) and must not be quoted as a measurement."""
+        return self.alarm_reason == "drift"
 
     @property
     def stem(self) -> str:

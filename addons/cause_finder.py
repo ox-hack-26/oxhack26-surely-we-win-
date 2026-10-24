@@ -52,9 +52,10 @@ CAUSE_SCHEMA = {
 
 SYSTEM = (
     "You are a cautious post-market surveillance analyst for an AI system that screens "
-    "retinal photographs for diabetic retinopathy. You explain why a clinic's estimated "
-    "catch rate may have dropped. Use only the numbers and images you are given; never invent "
-    "numbers. Say when the evidence is weak."
+    "retinal photographs for diabetic retinopathy. You explain why a clinic was flagged. "
+    "Use only the numbers and images you are given; never invent numbers. Say when the evidence "
+    "is weak. If the alarm is a drift alarm, its catch rate can't be verified: never quote a "
+    "catch rate or catch-rate band for it."
 )
 
 
@@ -171,10 +172,20 @@ def _prompt(alarm: Alarm, ev: Evidence, rules: Cause) -> str:
     stats = json.dumps(shifts, indent=2) if shifts else "not available"
     n = ev.n_scans if ev.n_scans is not None else "unknown"
     threshold = f"({ev.threshold_note}.)\n" if ev.threshold_note else ""
+    if alarm.is_drift:
+        score = f" (drift score {alarm.drift_auc:.2f}; 0.5 = like training, 1 = clearly different)" if alarm.drift_auc else ""
+        status = (
+            f"Drift alarm{score}: this clinic's scans no longer look like the ones the AI was validated on, "
+            "so its catch rate can't be verified. Do not quote a catch rate.\n"
+        )
+    else:
+        status = (
+            f"Estimated catch rate this week: {alarm.estimated_catch_rate:.0%} "
+            f"(uncertainty band {alarm.ci_low:.0%}-{alarm.ci_high:.0%}); baseline {alarm.baseline_catch_rate:.0%}.\n"
+        )
     return (
         f"Clinic {alarm.clinic_id} ({alarm.site}, {alarm.country}), week {alarm.week}.\n"
-        f"Estimated catch rate this week: {alarm.estimated_catch_rate:.0%} "
-        f"(uncertainty band {alarm.ci_low:.0%}-{alarm.ci_high:.0%}); baseline {alarm.baseline_catch_rate:.0%}.\n"
+        f"{status}"
         f"Scans this week: {n}.\n"
         f"Scan statistics, this clinic-week vs training:\n{stats}\n{threshold}"
         "(brightness and contrast are 0-1, sharpness is variance of the Laplacian, quality is 0-1, "
