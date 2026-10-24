@@ -25,7 +25,10 @@ python -m pytest -q tests                     # offline, no keys needed
 The free tier allows 20 requests a day and 5 a minute, and each alarm makes 2 calls (cause and
 report), so `--all` uses 14. Every successful answer is saved in `addons/cache/` (git-ignored) and
 reused the next time, keyed by clinic, week, model and the exact request; live calls are spaced 12 s
-apart, and a 429 that asks to wait under 90 s, or a 503 (model busy), is retried once. The run summary's `gemini_error`
+apart, and a 429 that asks to wait under 90 s, or a 503 (model busy), is retried once. If the model
+is out of its daily quota (429), unavailable to your key (404) or still busy, the call moves on to the
+next model in `GEMINI_FALLBACK_MODELS` (default `gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite`):
+each model has its own daily free quota. Gemini 2.5 models return 404 for new keys, so don't use them. The run summary's `gemini_error`
 says why Gemini wasn't used (e.g. `404 NOT_FOUND` for a wrong model name, `429 RESOURCE_EXHAUSTED`
 for the quota).
 

@@ -8,6 +8,9 @@ caller's tag (e.g. US-WEAR-01_week9_cause), the model and a hash of the request.
 sample-data/gemini/ is read the same way, so committed answers replay with no quota.
 An answer from the configured model is preferred; otherwise one from any model is used
 for the same request (each file records which model wrote it).
+If the configured model is unavailable (404) or out of quota (429), or still busy (503) after a
+retry, the call moves on to the next model in config.GEMINI_FALLBACK_MODELS: each model has its
+own daily free quota.
 MODE picks how the cache is used:
     auto    saved answer if there is one, else call Gemini and save the answer
     replay  saved answers only, never call Gemini
@@ -35,6 +38,7 @@ MODE = "auto"
 last_error: Optional[str] = None
 calls = {"live": 0, "cached": 0}
 _last_call = 0.0
+_exhausted: set = set()  # models that were unavailable or out of quota this run
 
 
 def available() -> bool:
@@ -93,9 +97,9 @@ def _load_cached(name: str, any_model: str):
     return None
 
 
-def _save_cached(name: str, tag: str, kind: str, response) -> None:
+def _save_cached(name: str, tag: str, kind: str, response, model: str) -> None:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    record = {"tag": tag, "model": config.GEMINI_MODEL, "kind": kind, "response": response}
+    record = {"tag": tag, "model": model, "kind": kind, "response": response}
     (CACHE_DIR / name).write_text(json.dumps(record, indent=2), encoding="utf-8")
 
 
@@ -141,33 +145,42 @@ def _call(tag: str, kind: str, request, parse, prompt: str, system: str, schema=
             return None
     if not available():
         return None
-    for attempt in range(2):
-        try:
-            _pace()
-            calls["live"] += 1
-            result = parse(request())
-            _save_cached(name, tag, kind, result)
-            return result
-        except Exception as e:
-            last_error = describe_error(e)
-            code = getattr(e, "code", None)
-            delay = _retry_delay(e) if code == 429 else BUSY_RETRY_WAIT if code == 503 else None
-            if attempt == 0 and delay is not None and delay <= MAX_RETRY_WAIT:
-                print(f"[gemini] {last_error}; retrying in {delay:.0f}s")
-                time.sleep(delay)
-                continue
-            print(f"[gemini] falling back: {last_error}")
-            return None
+    models = [config.GEMINI_MODEL] + [m for m in config.GEMINI_FALLBACK_MODELS if m != config.GEMINI_MODEL]
+    for model in [m for m in models if m not in _exhausted]:
+        for attempt in range(2):
+            try:
+                _pace()
+                calls["live"] += 1
+                result = parse(request(model))
+                _save_cached(_cache_name(tag, kind, prompt, system, schema, images, model), tag, kind, result, model)
+                return result
+            except Exception as e:
+                last_error = f"{model}: {describe_error(e)}"
+                code = getattr(e, "code", None)
+                delay = _retry_delay(e) if code == 429 else BUSY_RETRY_WAIT if code == 503 else None
+                if attempt == 0 and delay is not None and delay <= MAX_RETRY_WAIT:
+                    print(f"[gemini] {last_error}; retrying in {delay:.0f}s")
+                    time.sleep(delay)
+                    continue
+                if code not in (404, 429, 503):
+                    print(f"[gemini] falling back: {last_error}")
+                    return None
+                if code != 503:
+                    _exhausted.add(model)
+                print(f"[gemini] {last_error}; trying the next model")
+                break
+    print(f"[gemini] falling back: no Gemini model available (last error {last_error})")
+    return None
 
 
 def generate_json(prompt: str, schema: dict, system: str, images=None, tag: str = "call") -> Optional[dict]:
     """Ask Gemini for JSON matching `schema`. Returns the parsed dict or None."""
 
-    def request():
+    def request(model):
         from google.genai import types
 
         return _client().models.generate_content(
-            model=config.GEMINI_MODEL,
+            model=model,
             contents=[prompt] + _image_parts(images),
             config=types.GenerateContentConfig(
                 system_instruction=system,
@@ -183,11 +196,11 @@ def generate_json(prompt: str, schema: dict, system: str, images=None, tag: str 
 def generate_text(prompt: str, system: str, tag: str = "call") -> Optional[str]:
     """Ask Gemini for free text. Returns the text or None."""
 
-    def request():
+    def request(model):
         from google.genai import types
 
         return _client().models.generate_content(
-            model=config.GEMINI_MODEL,
+            model=model,
             contents=[prompt],
             config=types.GenerateContentConfig(system_instruction=system, temperature=0.3),
         )

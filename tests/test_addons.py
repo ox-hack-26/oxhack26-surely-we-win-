@@ -24,6 +24,8 @@ def offline(monkeypatch, tmp_path):
     monkeypatch.setattr(gemini_client, "MIN_INTERVAL", 0)
     monkeypatch.setattr(gemini_client, "BUSY_RETRY_WAIT", 0)
     monkeypatch.setattr(gemini_client, "MODE", "auto")
+    monkeypatch.setattr(gemini_client, "_exhausted", set())
+    monkeypatch.setattr(config, "GEMINI_FALLBACK_MODELS", [])
 
 
 @pytest.fixture
@@ -246,11 +248,12 @@ class FakeGemini:
     """Stands in for genai.Client: answers with `text`, or raises each error in `errors` first."""
 
     def __init__(self, text='{"x": 1}', errors=()):
-        self.text, self.errors, self.n = text, list(errors), 0
+        self.text, self.errors, self.n, self.used = text, list(errors), 0, []
         self.models = self
 
     def generate_content(self, **kwargs):
         self.n += 1
+        self.used.append(kwargs["model"])
         if self.errors:
             raise self.errors.pop(0)
         return type("Resp", (), {"text": self.text})()
@@ -313,7 +316,7 @@ def test_gemini_error_is_surfaced(fake_gemini):
     fake_gemini(errors=[FakeAPIError(404, "NOT_FOUND", "model is no longer available")])
     summary = run(DEFAULT_ALARM)
     assert summary["cause_source"] == "rules"
-    assert summary["gemini_error"].startswith("404 NOT_FOUND: model is no longer available")
+    assert "404 NOT_FOUND: model is no longer available" in summary["gemini_error"]
 
 
 def test_short_429_is_retried_once(fake_gemini):
@@ -326,14 +329,14 @@ def test_daily_429_is_not_waited_for(fake_gemini):
     fake = fake_gemini(errors=[FakeAPIError(429, "RESOURCE_EXHAUSTED", "Please retry in 12h42m4.5s.")])
     assert gemini_client.generate_json("p", {}, "s", tag="T") is None
     assert fake.n == 1
-    assert gemini_client.last_error.startswith("429 RESOURCE_EXHAUSTED")
+    assert "429 RESOURCE_EXHAUSTED" in gemini_client.last_error
 
 
 def test_busy_503_is_retried_once(fake_gemini):
     fake = fake_gemini(errors=[FakeAPIError(503, "UNAVAILABLE", "high demand")] * 2)
     assert gemini_client.generate_json("p", {}, "s", tag="T") is None
     assert fake.n == 2
-    assert gemini_client.last_error.startswith("503 UNAVAILABLE")
+    assert "503 UNAVAILABLE" in gemini_client.last_error
 
 
 def test_replay_accepts_another_models_answer(fake_gemini, monkeypatch):
@@ -345,3 +348,17 @@ def test_replay_accepts_another_models_answer(fake_gemini, monkeypatch):
     assert gemini_client.generate_text("p", "s", tag="T") == "from 3.6"
     assert gemini_client.generate_text("other", "s", tag="T") is None
     assert fake.n == 1
+
+
+def test_out_of_quota_model_falls_through_to_the_next(fake_gemini, monkeypatch):
+    daily = FakeAPIError(429, "RESOURCE_EXHAUSTED", "Please retry in 12h42m4.5s.")
+    gone = FakeAPIError(404, "NOT_FOUND", "no longer available")
+    fake = fake_gemini(errors=[daily, gone])
+    monkeypatch.setattr(config, "GEMINI_MODEL", "m-main")
+    monkeypatch.setattr(config, "GEMINI_FALLBACK_MODELS", ["m-gone", "m-spare"])
+    assert gemini_client.generate_json("p", {}, "s", tag="T") == {"x": 1}
+    assert fake.used == ["m-main", "m-gone", "m-spare"]
+    saved = json.loads(next(gemini_client.CACHE_DIR.glob("T_m-spare_*.json")).read_text(encoding="utf-8"))
+    assert saved["model"] == "m-spare"
+    gemini_client.generate_json("other", {}, "s", tag="T")
+    assert fake.used[-1] == "m-spare"  # exhausted models are skipped for the rest of the run
