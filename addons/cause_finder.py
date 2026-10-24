@@ -86,6 +86,8 @@ def rule_cause(alarm: Alarm, ev: Optional[Evidence] = None) -> Cause:
     shifts = compute_shifts(ev.flagged, ev.reference)
     notable = {k: s for k, s in shifts.items() if abs(s["relative_change"]) >= NOTABLE}
     evidence = [_evidence(k, s) for k, s in notable.items()]
+    if ev.threshold_note and "referral_rate" in notable:
+        evidence.append(ev.threshold_note)
     image_hits = [k for k in IMAGE_KEYS if k in notable]
 
     if ev.n_scans is not None and ev.n_scans < MIN_SCANS:
@@ -168,12 +170,13 @@ def _prompt(alarm: Alarm, ev: Evidence, rules: Cause) -> str:
     shifts = compute_shifts(ev.flagged, ev.reference)
     stats = json.dumps(shifts, indent=2) if shifts else "not available"
     n = ev.n_scans if ev.n_scans is not None else "unknown"
+    threshold = f"({ev.threshold_note}.)\n" if ev.threshold_note else ""
     return (
         f"Clinic {alarm.clinic_id} ({alarm.site}, {alarm.country}), week {alarm.week}.\n"
         f"Estimated catch rate this week: {alarm.estimated_catch_rate:.0%} "
         f"(uncertainty band {alarm.ci_low:.0%}-{alarm.ci_high:.0%}); baseline {alarm.baseline_catch_rate:.0%}.\n"
         f"Scans this week: {n}.\n"
-        f"Scan statistics, this clinic-week vs training:\n{stats}\n"
+        f"Scan statistics, this clinic-week vs training:\n{stats}\n{threshold}"
         "(brightness and contrast are 0-1, sharpness is variance of the Laplacian, quality is 0-1, "
         "resolution is width in pixels, referral score is the classifier's probability.)\n\n"
         f"A rule-based check suggests: {rules.category} - {rules.likely_cause}\n\n"

@@ -24,9 +24,9 @@ STAT_KEYS = [
     "referral_rate",
 ]
 
-# Only used when the add-ons summarise scans.parquet rows themselves; the engine
-# applies the model's own operating threshold when it fills referral_rate.
-REFER_THRESHOLD = 0.5
+# Only used when the add-ons summarise scans.parquet rows themselves and the alarm
+# has no referral_threshold; normally the alarm carries the model's own cut-off.
+FALLBACK_REFER_THRESHOLD = 0.5
 
 
 class ScanStats(BaseModel):
@@ -59,6 +59,7 @@ class Alarm(BaseModel):
     expected_missed_cases: Optional[float] = None
     expected_harm: float
     review_cost: float
+    referral_threshold: Optional[float] = Field(default=None, ge=0, le=1)  # p_referable cut-off, from model.json
     # Optional here so a partial alarm still works: missing stats are filled from scans.parquet.
     flagged_scan_stats: Optional[ScanStats] = None
     training_scan_stats: Optional[ScanStats] = None
@@ -76,8 +77,9 @@ def _mean(values) -> Optional[float]:
     return sum(vals) / len(vals) if vals else None
 
 
-def summarise(rows: list[dict]) -> Optional[ScanStats]:
-    """Summarise scans.parquet rows into ScanStats. Returns None for no rows."""
+def summarise(rows: list[dict], threshold: float) -> Optional[ScanStats]:
+    """Summarise scans.parquet rows into ScanStats; a scan is referred when p_referable >= threshold.
+    Returns None for no rows."""
     if not rows:
         return None
     p_known = [r.get("p_referable") for r in rows]
@@ -90,7 +92,7 @@ def summarise(rows: list[dict]) -> Optional[ScanStats]:
         mean_quality=_mean(r.get("quality") for r in rows),
         mean_resolution_px=_mean(r.get("width") for r in rows),
         referral_score_mean=_mean(p_known),
-        referral_rate=_mean(v >= REFER_THRESHOLD for v in p_known),
+        referral_rate=_mean(v >= threshold for v in p_known),
     )
 
 

@@ -2,8 +2,9 @@
 
 The alarm normally carries flagged_scan_stats and training_scan_stats. If either
 is missing, it is rebuilt from the scans.parquet rows for flagged_scan_ids or
-reference_scan_ids; weekly.parquet gives the week's scan count, and
-clinicdrift.data.load_image gives sample images for Gemini. Each piece is
+reference_scan_ids, counting a scan as referred when p_referable >= the alarm's
+referral_threshold (0.5 if the alarm has none). weekly.parquet gives the week's
+scan count, and clinicdrift.data.load_image gives sample images for Gemini. Each piece is
 optional: anything missing comes back empty and the add-ons carry on without it.
 """
 
@@ -15,7 +16,7 @@ from typing import Optional
 
 from clinicdrift.config import PROCESSED_DIR
 
-from .alarm_schema import Alarm, ScanStats, summarise
+from .alarm_schema import FALLBACK_REFER_THRESHOLD, Alarm, ScanStats, summarise
 
 SCANS_PATH = PROCESSED_DIR / "scans.parquet"
 WEEKLY_PATH = PROCESSED_DIR / "weekly.parquet"
@@ -29,6 +30,7 @@ class Evidence:
     n_scans: Optional[int] = None  # scans at this clinic that week
     images: list = field(default_factory=list)  # (caption, bytes, mime)
     notes: list = field(default_factory=list)
+    threshold_note: Optional[str] = None  # set when referral_rate was rebuilt from scans.parquet
 
 
 def load_scan_rows(scan_ids, scans_path=None) -> list[dict]:
@@ -100,14 +102,25 @@ def load_images(scan_ids, caption: str) -> list:
 def gather_evidence(alarm: Alarm, scans_path=None, weekly_path=None, with_images=True) -> Evidence:
     """The alarm's own stats, filled in from the other hand-off files where they are missing."""
     ev = Evidence(flagged=alarm.flagged_scan_stats, reference=alarm.training_scan_stats)
+    threshold = alarm.referral_threshold
+    if threshold is None:
+        threshold = FALLBACK_REFER_THRESHOLD
     if ev.flagged is None:
-        ev.flagged = summarise(load_scan_rows(alarm.flagged_scan_ids, scans_path))
+        ev.flagged = summarise(load_scan_rows(alarm.flagged_scan_ids, scans_path), threshold)
         if ev.flagged is not None:
             ev.notes.append(f"flagged stats computed from {ev.flagged.n_scans} flagged scans in scans.parquet")
     if ev.reference is None:
-        ev.reference = summarise(load_scan_rows(alarm.reference_scan_ids, scans_path))
+        ev.reference = summarise(load_scan_rows(alarm.reference_scan_ids, scans_path), threshold)
         if ev.reference is not None:
             ev.notes.append(f"training stats computed from {ev.reference.n_scans} reference scans in scans.parquet")
+    if ev.flagged is not alarm.flagged_scan_stats or ev.reference is not alarm.training_scan_stats:
+        if alarm.referral_threshold is None:
+            ev.threshold_note = (
+                f"referral rate counts p_referable >= {threshold:g} (fallback: the alarm has no referral_threshold)"
+            )
+        else:
+            ev.threshold_note = f"referral rate counts p_referable >= {threshold:g} (the alarm's referral_threshold)"
+        ev.notes.append(ev.threshold_note)
     if ev.flagged is None or ev.reference is None:
         ev.notes.append("scan statistics unavailable (not in the alarm, and scans.parquet missing or scan ids not in it)")
     # flagged_scan_stats covers the whole clinic-week; stats built from flagged ids are only a sample

@@ -34,6 +34,7 @@ def stripped(alarm):
 def test_fixture_matches_handoffs_format(alarm):
     assert alarm.clinic_id == "FR-MES-03"
     assert alarm.week == 7
+    assert alarm.referral_threshold == 0.27
     assert alarm.flagged_scan_stats.n_scans == 64
     assert alarm.training_scan_stats.mean_contrast == 0.27
     assert alarm.flagged_scan_ids == ["messidor2-00042", "messidor2-00057"]
@@ -63,6 +64,23 @@ def test_missing_stats_filled_from_scans(stripped):
     assert ev.reference.referral_rate == 0.5
     assert ev.n_scans is None  # flagged ids are a sample, not the whole week
     assert rule_cause(stripped, ev).category == "camera or image quality"
+
+
+def test_rebuilt_referral_rate_uses_alarm_threshold(stripped):
+    a = stripped.model_copy(update={"referral_threshold": 0.2})
+    ev = gather_evidence(a, scans_path=FAKE_SCANS, with_images=False)
+    assert ev.flagged.referral_rate == 0.5  # 0.21 >= 0.2, 0.17 < 0.2
+    assert ev.reference.referral_rate == 1.0
+    assert ev.threshold_note == "referral rate counts p_referable >= 0.2 (the alarm's referral_threshold)"
+    assert ev.threshold_note in rule_cause(a, ev).evidence
+
+
+def test_rebuilt_referral_rate_falls_back_to_half(stripped):
+    a = stripped.model_copy(update={"referral_threshold": None})
+    ev = gather_evidence(a, scans_path=FAKE_SCANS, with_images=False)
+    assert ev.flagged.referral_rate == 0.0
+    assert ev.reference.referral_rate == 0.5  # 0.61 >= 0.5, 0.24 < 0.5
+    assert "0.5 (fallback" in ev.threshold_note
 
 
 def test_no_stats_anywhere_is_unknown_with_note(stripped, tmp_path):
