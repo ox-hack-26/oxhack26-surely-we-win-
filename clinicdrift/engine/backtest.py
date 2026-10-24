@@ -78,17 +78,26 @@ def true_weekly_harm(weekly: pd.DataFrame, ref: dict, costs: Costs) -> tuple[pd.
                      index=weekly["week"]), pd.Series(extra_missed.to_numpy(), index=weekly["week"])
 
 
+def load_replay(scans: pd.DataFrame, model: dict) -> tuple[pd.DataFrame, dict]:
+    """Every replayed scan with its label and referral decision, and the clinics by ID."""
+    stream = pd.read_parquet(PROCESSED_DIR / "stream.parquet")
+    seen = stream.merge(scans[["scan_id", "referable", "p_referable"]], on="scan_id", validate="one_to_one")
+    seen["referred"] = seen["p_referable"].to_numpy() >= referral_thresholds(seen, scans, model)
+    clinics = {c["clinic_id"]: c for c in json.loads((PROCESSED_DIR / "clinics.json").read_text(encoding="utf-8"))}
+    return seen, clinics
+
+
 def run(costs: Costs = Costs(), weekly: pd.DataFrame | None = None) -> pd.DataFrame:
     scans, _, model, _ = load_inputs()
     ref = reference_levels(scans, model)
     if weekly is None:
         weekly = pd.read_parquet(PROCESSED_DIR / "weekly.parquet")
-    stream = pd.read_parquet(PROCESSED_DIR / "stream.parquet")
-    seen = stream.merge(scans[["scan_id", "referable", "p_referable"]], on="scan_id", validate="one_to_one")
-    seen["referred"] = seen["p_referable"].to_numpy() >= referral_thresholds(seen, scans, model)
-    graded = seen[seen["graded_at"].notna()]
-    clinics = {c["clinic_id"]: c for c in json.loads((PROCESSED_DIR / "clinics.json").read_text(encoding="utf-8"))}
+    seen, clinics = load_replay(scans, model)
+    return score(weekly, seen[seen["graded_at"].notna()], clinics, ref, costs)
 
+
+def score(weekly: pd.DataFrame, graded: pd.DataFrame, clinics: dict, ref: dict, costs: Costs) -> pd.DataFrame:
+    """Each policy's first alarm per clinic, and the harm and review cost that follow, for one set of grades."""
     rows = []
     for clinic_id, w in weekly.groupby("clinic_id"):
         w = w.sort_values("week")

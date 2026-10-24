@@ -79,6 +79,13 @@ CLINICS = (
 )
 
 
+def draw_grades(ts: pd.Series, rng: np.random.Generator) -> pd.Series:
+    """When each scan's expert grade arrives: a GRADED_SHARE sample, GRADE_DELAY_DAYS later; NaT for the rest."""
+    graded = rng.random(len(ts)) < GRADED_SHARE
+    delay = pd.to_timedelta(rng.integers(GRADE_DELAY_DAYS[0], GRADE_DELAY_DAYS[1] + 1, len(ts)), unit="D")
+    return (ts + delay).where(graded)
+
+
 def segment_weeks(clinic: Clinic) -> list[tuple[str, list[int]]]:
     """Each (source, weeks it covers) for a clinic, weeks numbered from 1."""
     starts = [first for _, first in clinic.segments] + [N_WEEKS + 1]
@@ -112,9 +119,7 @@ def build_stream(scans: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
         part = part.copy()
         day, second = own.integers(0, 5, n), own.integers(8 * 3600, 18 * 3600, n)  # weekdays, 08:00 to 18:00
         part["ts"] = part["week_start"] + pd.to_timedelta(day, unit="D") + pd.to_timedelta(second, unit="s")
-        graded = own.random(n) < GRADED_SHARE
-        delay = pd.to_timedelta(own.integers(GRADE_DELAY_DAYS[0], GRADE_DELAY_DAYS[1] + 1, n), unit="D")
-        part["graded_at"] = (part["ts"] + delay).where(graded)
+        part["graded_at"] = draw_grades(part["ts"], own)
         timed.append(part)
     stream = pd.concat(timed)
 

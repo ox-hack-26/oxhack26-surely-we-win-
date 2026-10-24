@@ -13,6 +13,7 @@ import pandas as pd
 from clinicdrift.config import PROCESSED_DIR, REPO
 from clinicdrift.engine.backtest import change_week
 from clinicdrift.engine.estimate import load_inputs
+from clinicdrift.engine.robustness import SWEEP_DRAWS
 
 OUT = REPO / "docs" / "results.md"
 DEMO = "US-WEAR-01"
@@ -50,7 +51,15 @@ def main() -> None:
     stream = pd.read_parquet(PROCESSED_DIR / "stream.parquet")
     backtest = pd.read_parquet(PROCESSED_DIR / "backtest.parquet")
     summary = pd.DataFrame(json.loads((PROCESSED_DIR / "backtest_summary.json").read_text(encoding="utf-8"))).set_index("policy")
-    sweep = pd.read_parquet(PROCESSED_DIR / "backtest_sweep.parquet")
+    robust_path, robust_sweep = PROCESSED_DIR / "robustness_summary.json", PROCESSED_DIR / "robustness_sweep.parquet"
+    robust = json.loads(robust_path.read_text(encoding="utf-8")) if robust_path.exists() else None
+    sweep = pd.read_parquet(robust_sweep if robust_sweep.exists() else PROCESSED_DIR / "backtest_sweep.parquet")
+    sweep_note = f"median over {SWEEP_DRAWS} draws of the grades per review cost" if robust_sweep.exists() else "one draw of the grades"
+    rpol = {p["policy"]: p for p in robust["policies"]} if robust else {}
+
+    def robust_alarm(policy: str, clinic: str):
+        return next((c for c in robust["clinics"] if c["policy"] == policy and c["clinic_id"] == clinic), None) if robust else None
+
     settings = json.loads((PROCESSED_DIR / "decision_settings.json").read_text(encoding="utf-8"))
     clinics = {c["clinic_id"]: c for c in json.loads((PROCESSED_DIR / "clinics.json").read_text(encoding="utf-8"))}
     costs, ref = settings["costs"], settings["reference"]
@@ -93,12 +102,73 @@ def main() -> None:
         upd_week = clinics[UPDATE]["update_from_week"]
         before, after = upd.loc[: upd_week - 1], upd.loc[upd_week:]
         upd_alarm = first_alarms.loc[UPDATE, "ClinicDrift"]
+        upd_robust = robust_alarm("ClinicDrift", UPDATE)
+        if upd_robust and upd_robust["first_alarm_median"] is not None:
+            upd_delay = upd_robust["first_alarm_median"] - upd_week
+            when = (f"a median of {upd_delay:g} weeks after the update (weeks {upd_robust['first_alarm_p5']:g}–"
+                    f"{upd_robust['first_alarm_p95']:g} across {robust['n_draws']} draws of the grades)")
+        else:
+            upd_delay = upd_alarm - upd_week if pd.notna(upd_alarm) else None
+            when = f"in week {weeks(upd_alarm)}"
         update_lines = [
             f"- **A faulty software update** ({UPDATE}): in week {upd_week} the vendor raises the referral cut-off "
             f"({before['referral_threshold'].iloc[0]:.3f} → {after['referral_threshold'].iloc[0]:.3f}). The scans look exactly the same, "
             f"so drift stays at {after['drift_auc'].mean():.2f} on average and **watching drift never alarms**. The real catch rate falls from "
-            f"{pct(before['true_sensitivity'].mean())} to {pct(after['true_sensitivity'].mean())}. ClinicDrift raises a harm alarm in week "
-            f"{weeks(upd_alarm)}, once it is 90% sure the catch rate is below the 80% screening standard.",
+            f"{pct(before['true_sensitivity'].mean())} to {pct(after['true_sensitivity'].mean())}. ClinicDrift raises a harm alarm "
+            f"{when}, once it is 90% sure the catch rate is below the 80% screening standard.",
+        ]
+
+    if robust:
+        n_draws, rc, rg = robust["n_draws"], rpol["ClinicDrift"], rpol["wait for grades"]
+        headline = [
+            f"- **ClinicDrift caught all {rc['changes']} clinics whose conditions changed in {rc['all_caught_share']:.0%} of {n_draws} draws "
+            f"of the expert grades**, with a false alarm in {rc['any_false_alarm_share']:.0%} of draws. It let a median of "
+            f"**{rc['missed_median']:.1f} extra urgent cases** through (90% of draws: {rc['missed_p5']:.1f}–{rc['missed_p95']:.1f}); "
+            f"median total cost {gbp(rc['cost_median'])}.",
+            f"- **Waiting for expert grades** (today's practice) caught a median of {rg['caught_median']:g} of {rg['changes']} "
+            f"(at most {rg['caught_max']}), raised a false alarm in {rg['any_false_alarm_share']:.0%} of draws, and let a median of "
+            f"**{rg['missed_median']:.1f} extra urgent cases** through; median total cost {gbp(rg['cost_median'])}.",
+        ]
+    else:
+        headline = [
+            f"- **ClinicDrift caught {int(cd.clinics_caught)} of {int(cd.clinics_changed)} clinics whose conditions changed**, "
+            f"{delay(cd.median_weeks_to_alarm)}, with **{int(cd.false_alarms)} false alarms** and "
+            f"**{cd.extra_missed_cases:g} extra urgent cases missed**. Total cost {gbp(cd.total_cost_gbp)}.",
+            f"- **Waiting for expert grades** (today's practice) caught {int(grades.clinics_caught)} of {int(grades.clinics_changed)}, "
+            f"{delay(grades.median_weeks_to_alarm)}, and let **{grades.extra_missed_cases:g} extra urgent cases** through. "
+            f"Total cost {gbp(grades.total_cost_gbp)}.",
+        ]
+    wear_robust = robust_alarm("ClinicDrift", DEMO)
+    wear_range = (f" (weeks {wear_robust['first_alarm_p5']:g}–{wear_robust['first_alarm_p95']:g} across draws of the grades)"
+                  if wear_robust and wear_robust["first_alarm_median"] is not None else "")
+
+    robust_section = []
+    if robust:
+        robust_section = [
+            f"## Across {robust['n_draws']} draws of the expert grades",
+            "",
+            "Which scans get graded, and how late, is luck, and grades feed both ClinicDrift and the wait-for-grades policy. "
+            f"So the backtest was rerun {robust['n_draws']} times with every clinic's grades redrawn (`robustness.py`); "
+            "the scans, the model and the label-free estimates stay fixed. **Quote these numbers, not the single run below.**",
+            "",
+            table(
+                [[p["policy"], pct(p["all_caught_share"]), f"{p['caught_median']:g} ({p['caught_min']}–{p['caught_max']})",
+                  pct(p["any_false_alarm_share"]), weeks(p["median_weeks_to_alarm"]),
+                  f"{p['missed_median']:.1f} ({p['missed_p5']:.1f}–{p['missed_p95']:.1f})",
+                  f"{gbp(p['cost_median'])} ({gbp(p['cost_p5'])}–{gbp(p['cost_p95'])})"] for p in robust["policies"]],
+                ["Policy", "Draws catching all changes", "Changes caught, median (range)", "Draws with a false alarm",
+                 "Median weeks to alarm", "Extra urgent cases missed, median (90% of draws)", "Total cost, median (90% of draws)"],
+            ),
+            "",
+            "ClinicDrift's first alarm per clinic across the draws (– = never):",
+            "",
+            table(
+                [[c["clinic_id"], c["changed_week"] if c["changed_week"] else "no change", pct(c["alarm_share"]),
+                  "–" if c["first_alarm_median"] is None else f"{c['first_alarm_median']:g} ({c['first_alarm_p5']:g}–{c['first_alarm_p95']:g})"]
+                 for c in sorted((c for c in robust["clinics"] if c["policy"] == "ClinicDrift"), key=lambda c: c["clinic_id"])],
+                ["Clinic", "Changed in week", "Draws with an alarm", "First alarm week, median (90% of draws)"],
+            ),
+            "",
         ]
 
     lines = [
@@ -115,15 +185,10 @@ def main() -> None:
         f"At the default costs ({gbp(costs['missed_case'])} per missed urgent case, {gbp(costs['false_referral'])} per unnecessary referral, "
         f"{gbp(costs['review'])} per review), replaying 20 weeks at {len(clinics)} simulated clinics:",
         "",
-        f"- **ClinicDrift caught {int(cd.clinics_caught)} of {int(cd.clinics_changed)} clinics whose conditions changed**, "
-        f"{delay(cd.median_weeks_to_alarm)}, with **{int(cd.false_alarms)} false alarms** and "
-        f"**{cd.extra_missed_cases:g} extra urgent cases missed**. Total cost {gbp(cd.total_cost_gbp)}.",
-        f"- **Waiting for expert grades** (today's practice) caught {int(grades.clinics_caught)} of {int(grades.clinics_changed)}, "
-        f"{delay(grades.median_weeks_to_alarm)}, and let **{grades.extra_missed_cases:g} extra urgent cases** through. "
-        f"Total cost {gbp(grades.total_cost_gbp)}.",
+        *headline,
         f"- **The demo clinic {DEMO}**: its camera starts wearing out in week {wear_start}. ClinicDrift raises the alarm in week "
-        f"{weeks(demo_alarm)}" + (f", {collapse - int(demo_alarm)} weeks before the catch rate collapses (week {collapse})" if collapse and demo_alarm else "")
-        + f". Waiting for grades never flags it within the 20 weeks, and {demo_bt.loc['wait for grades', 'extra_missed_before_alarm']:.0f} extra urgent cases are missed.",
+        f"{weeks(demo_alarm)}{wear_range}" + (f", {collapse - int(demo_alarm)} weeks before the catch rate collapses (week {collapse})" if collapse and demo_alarm else "")
+        + f". In the main run waiting for grades never flags it within the 20 weeks, and {demo_bt.loc['wait for grades', 'extra_missed_before_alarm']:.0f} extra urgent cases are missed.",
         *update_lines,
         f"- **No single signal catches everything**: watching drift missed {len(missed_by['watch drift'])} of the "
         f"{len(changed_ids)} changes and watching the estimate missed {len(missed_by['watch estimate'])}; "
@@ -155,7 +220,10 @@ def main() -> None:
         f"{pct(model['val_sensitivity'])} of urgent cases and clears {pct(model['val_specificity'])} of healthy scans on validation.",
         f"- **Costs** are illustrative, and the decision horizon is {costs['horizon_weeks']} weeks (how long a problem runs before grades show it).",
         "",
-        "## Backtest: four ways to monitor",
+        *robust_section,
+        "## One run in detail: the replay's own grades",
+        "",
+        "A single draw of the grades, so a little lucky or unlucky; the section above gives the ranges.",
         "",
         table(
             [[p, f"{int(r.clinics_caught)} of {int(r.clinics_changed)}", int(r.false_alarms), weeks(r.median_weeks_to_alarm),
@@ -200,6 +268,8 @@ def main() -> None:
         "",
         "## How much the made-up costs matter",
         "",
+        f"Total cost by what one review costs, other costs fixed ({sweep_note}).",
+        "",
         table(
             [[gbp(r.review_cost), r.policy, f"{int(r.clinics_caught)} of {int(r.clinics_changed)}", int(r.false_alarms),
               f"{r.extra_missed_cases:g}", gbp(r.total_cost_gbp)] for r in sweep.itertuples()],
@@ -213,9 +283,10 @@ def main() -> None:
         "so make no fairness claims about patient groups, only about clinics and cameras. This APTOS copy is 224 px, so the APTOS clinics test low resolution, not Indian patients.",
         cost_caveat,
         (f"- **The evidence test costs time**: ClinicDrift only raises a harm alarm once it is 90% sure the catch rate is below 80%, so on the software update it waits "
-         f"{weeks(first_alarms.loc[UPDATE, 'ClinicDrift'] - clinics[UPDATE]['update_from_week'])} weeks where watching the estimate alarms at once. "
-         "That is the price of not pulling a healthy AI over a few weeks of noise: without the test, a handful of low grades was enough to pull healthy clinics."
-         if UPDATE in clinics and not pd.isna(first_alarms.loc[UPDATE, "ClinicDrift"]) else
+         f"{weeks(upd_delay)} weeks{' (median)' if upd_robust else ''} where watching the estimate alarms at once. "
+         "Most of ClinicDrift's missed cases come from that wait. It is the price of not pulling a healthy AI over a few weeks of noise: "
+         "without the test, a handful of low grades was enough to pull healthy clinics."
+         if UPDATE in clinics and upd_delay is not None else
          "- **Watching drift alone does almost as well here**, because every harmful change in this replay also changed how the scans look."),
         "- **The 80% floor** is the long-standing UK (Exeter / British Diabetic Association) standard of at least 80% sensitivity for diabetic eye screening.",
         f"- **A new camera doesn't always mean missed cases**: at SW-MES-01 the new camera moved this model's catch rate "
@@ -229,7 +300,9 @@ def main() -> None:
         f"- **Late grades can mislead**: at {DEMO} the belief creeps back up in the later weeks because the grades arriving then are for scans "
         "taken 5–7 weeks earlier, when wear was milder. That is why an alarm stays on until someone reviews the AI: without that, old grades would switch it off just as harm peaks.",
         "- **Full wear is obvious**: at wear 1.0 any grader would reject the scans. The point is that drift fired at low wear, when the scans still look normal.",
-        f"- **Small**: {len(clinics)} clinics, 20 weeks, one replay seed. \"Real\" values use every expert grade in hindsight.",
+        f"- **Small**: {len(clinics)} clinics and 20 weeks. The expert grades were redrawn "
+        + (f"{robust['n_draws']} times" if robust else "only once")
+        + ", but the scans, the clinics and the camera changes are one replay. \"Real\" values use every expert grade in hindsight.",
         "",
         "## Regenerate",
         "",
@@ -238,6 +311,7 @@ def main() -> None:
         "python -m clinicdrift.engine.estimate",
         "python -m clinicdrift.engine.decide",
         "python -m clinicdrift.engine.backtest",
+        "python -m clinicdrift.engine.robustness",
         "python -m clinicdrift.engine.results",
         "python -m clinicdrift.engine.charts",
         "```",

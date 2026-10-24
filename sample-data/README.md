@@ -18,7 +18,8 @@ python scripts/export_samples.py
 | `model.json` | Referral threshold and validation scores | Vansh, Sneha |
 | `alarms/*.json` | The 7 alarm files, one per clinic, in the add-ons' format | Vansh |
 | `images/*.jpg` | 512 px copies of every scan the alarms point at, plus `eyepacs-15898` at wear 0, 0.25, 0.5, 0.75 and 1 | Vansh: Gemini; slides |
-| `backtest.csv`, `backtest_summary.json`, `backtest_sweep.csv` | The four-policy backtest and the review-cost sweep | Pitch, Devpost |
+| `backtest.csv`, `backtest_summary.json`, `backtest_sweep.csv` | The four-policy backtest and the review-cost sweep, on one draw of the grades | Pitch, Devpost |
+| `robustness_summary.json`, `robustness_sweep.csv` | The same across 100 redraws of the grades (30 per review cost): medians and ranges. **Quote these** | Sneha: results page; pitch |
 
 ## Before the repo goes public
 
