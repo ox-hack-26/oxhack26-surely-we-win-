@@ -5,6 +5,36 @@
 > Sarah's model lands, rerun `python -m clinicdrift.engine.pipeline` and update every number here
 > from the new `docs/results.md`. Remaining [TBD]s need a decision from the team.
 
+## Try it out
+
+Code: https://github.com/ox-hack-26/oxhack26-surely-we-win-
+
+The alarm demo runs from a fresh clone with **no API keys**: it replays saved Gemini answers from
+`sample-data/gemini/` and reads the sample alarms in `sample-data/`, so there is nothing to download.
+
+```bash
+git clone -b vansh/addons https://github.com/ox-hack-26/oxhack26-surely-we-win-.git
+cd oxhack26-surely-we-win-
+python -m venv .venv
+.venv\Scriptsctivate            # macOS/Linux: source .venv/bin/activate
+pip install -r requirements-addons.txt
+python -m addons.run_demo --clinic US-WEAR-01 --replay   # the worn-camera alarm
+python -m addons.run_demo --all --replay                 # all 8 alarms
+python -m pytest -q tests                                # 59 offline tests
+```
+
+Each run prints the likely cause and the spoken alert text, and writes the cause and the draft
+incident report to `addons/out/`.
+
+The dashboard also starts with no keys, in a labelled synthetic demo mode (its numbers are
+illustrative, not the replay results above):
+
+```bash
+pip install -r dashboard/requirements.txt
+cd dashboard
+streamlit run app.py
+```
+
 ## Images for the gallery
 
 Upload these from `docs/charts/` (1920×1080, numbers match `docs/results.md`; pull dev again before
