@@ -5,6 +5,16 @@
 > Sarah's model lands, rerun `python -m clinicdrift.engine.pipeline` and update every number here
 > from the new `docs/results.md`. Remaining [TBD]s need a decision from the team.
 
+## Images for the gallery
+
+Upload these from `docs/charts/` (1920×1080, numbers match `docs/results.md`; pull dev again before
+submitting, as they're redrawn when the model changes):
+
+1. `1-camera-wear.png`: the AI's own estimate stays near 94% while the real catch rate falls to 36%
+2. `2-software-update.png`: drift stays silent while the catch rate falls from 90% to 67%
+3. `3-backtest.png`: only ClinicDrift caught all 8 failures
+4. `4-cost-sweep.png`: cheapest way to monitor while a review costs up to £25k
+
 ## Inspiration
 
 AI that screens retinal photos for diabetic retinopathy is validated once, then deployed to many
