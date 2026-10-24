@@ -1,0 +1,24 @@
+{
+  "tag": "FR-MES-01_week1_cause",
+  "model": "gemini-3.5-flash-lite",
+  "kind": "json",
+  "response": {
+    "likely_cause": "Changes in image quality metrics, resolution, and camera parameters deviating significantly from training data.",
+    "category": "camera or image quality",
+    "evidence": [
+      "Drift score is 0.99, indicating scans no longer look like training data.",
+      "Mean brightness changed from 0.373 to 0.328 (relative change -0.119).",
+      "Mean contrast changed from 0.0963 to 0.0564 (relative change -0.414).",
+      "Mean sharpness changed from 0.000399 to 0.000213 (relative change -0.467).",
+      "Mean quality changed from 0.5 to 0.198 (relative change -0.604).",
+      "Mean resolution changed from 1020.0 px to 2010.0 px (relative change 0.967).",
+      "Referral rate increased from 0.685 to 0.8 (relative change 0.169)."
+    ],
+    "confidence": 0.95,
+    "recommended_checks": [
+      "Verify camera hardware settings and firmware updates at clinic FR-MES-01.",
+      "Check lens cleanliness and correct focus calibration.",
+      "Review image capture protocols and export settings to ensure resolution and compression match training baselines."
+    ]
+  }
+}

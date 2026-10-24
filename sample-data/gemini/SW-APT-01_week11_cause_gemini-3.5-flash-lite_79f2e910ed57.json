@@ -1,0 +1,24 @@
+{
+  "tag": "SW-APT-01_week11_cause",
+  "model": "gemini-3.5-flash-lite",
+  "kind": "json",
+  "response": {
+    "likely_cause": "Significant degradation in image quality, resolution, brightness, and sharpness compared to training data, accompanied by a drift score of 1.00.",
+    "category": "camera or image quality",
+    "evidence": [
+      "Drift score is 1.00, indicating scans do not look like training data",
+      "Mean resolution decreased from 1020.0 px to 224.0 px (relative change -0.781)",
+      "Mean quality dropped from 0.5 to 0.113 (relative change -0.773)",
+      "Mean sharpness dropped from 0.000399 to 7.53e-05 (relative change -0.811)",
+      "Mean contrast decreased from 0.0963 to 0.0655 (relative change -0.32)",
+      "Mean brightness decreased from 0.373 to 0.315 (relative change -0.155)",
+      "Referral rate increased from 0.685 to 0.9 (relative change 0.315)"
+    ],
+    "confidence": 0.95,
+    "recommended_checks": [
+      "Inspect the camera hardware and clean the lens optics",
+      "Verify camera export settings to ensure resolution has not been inadvertently downscaled",
+      "Check ambient lighting and flash intensity settings on the imaging device"
+    ]
+  }
+}

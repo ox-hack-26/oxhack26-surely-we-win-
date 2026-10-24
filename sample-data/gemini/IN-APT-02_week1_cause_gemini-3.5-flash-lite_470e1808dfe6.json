@@ -1,0 +1,25 @@
+{
+  "tag": "IN-APT-02_week1_cause",
+  "model": "gemini-3.5-flash-lite",
+  "kind": "json",
+  "response": {
+    "likely_cause": "The clinic is producing significantly lower resolution and poorer quality images compared to training data, affecting feature extraction and leading to an elevated referral rate.",
+    "category": "camera or image quality",
+    "evidence": [
+      "Drift score of 0.99 indicating scans do not look like training data",
+      "Mean quality dropped from 0.5 to 0.108 with a relative change of -0.784",
+      "Mean resolution dropped from 1020.0 px to 224.0 px with a relative change of -0.781",
+      "Mean sharpness dropped from 0.000399 to 6.86e-05 with a relative change of -0.828",
+      "Mean contrast dropped from 0.0963 to 0.0648 with a relative change of -0.327",
+      "Mean brightness dropped from 0.373 to 0.298 with a relative change of -0.2",
+      "Referral rate increased from 0.685 to 0.82 with a relative change of 0.198"
+    ],
+    "confidence": 0.95,
+    "recommended_checks": [
+      "Inspect camera hardware settings and ensure correct output resolution is selected",
+      "Check lens cleanliness and focus mechanism of the retinal camera",
+      "Verify proper ambient lighting and pupil dilation protocols at the clinic",
+      "Review image export and compression pipelines to ensure downscaling is not corrupting scan quality"
+    ]
+  }
+}

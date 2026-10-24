@@ -53,7 +53,7 @@ clinicdrift/
     results.py   writes docs/results.md, the one source for pitch and Devpost numbers
     charts.py    slide charts in docs/charts/, drawn from the same outputs
     pipeline.py  checks the model files fit, then runs all of the above: python -m clinicdrift.engine.pipeline
-addons/          Vansh: Gemini cause-finding and report, ElevenLabs alert
+addons/          Vansh: Gemini cause-finding and report, ElevenLabs alert (see addons/README.md)
 db/schema.sql    Sneha: Tiger Data tables
 docs/            hand-off formats
 sample-data/     small copies of the outputs for teammates without the scans

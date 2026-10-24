@@ -1,0 +1,25 @@
+{
+  "tag": "IN-APT-01_week1_cause",
+  "model": "gemini-3.5-flash-lite",
+  "kind": "json",
+  "response": {
+    "likely_cause": "The camera settings or hardware configuration have changed, resulting in severely reduced image resolution, lower sharpness, poorer overall image quality, and altered brightness and contrast compared to the training data.",
+    "category": "camera or image quality",
+    "evidence": [
+      "Drift alarm with a high drift score of 0.99",
+      "Mean brightness dropped from 0.373 in training to 0.294 in flagged scans (relative change -0.211)",
+      "Mean contrast dropped from 0.0963 in training to 0.0647 in flagged scans (relative change -0.328)",
+      "Mean sharpness dropped drastically from 0.000399 in training to 6.2e-05 in flagged scans (relative change -0.844)",
+      "Mean quality dropped from 0.5 in training to 0.106 in flagged scans (relative change -0.789)",
+      "Mean resolution decreased from 1020.0 pixels in training to 224.0 pixels in flagged scans (relative change -0.781)",
+      "Referral rate increased from 0.685 in training to 0.8 in flagged scans"
+    ],
+    "confidence": 0.95,
+    "recommended_checks": [
+      "Inspect the physical camera lens and sensor for dirt, smudges, or obstruction",
+      "Verify camera software resolution and export settings to ensure images are not being excessively downsampled",
+      "Check illumination settings and calibration of the fundus camera",
+      "Review technician training on proper focus, alignment, and capture protocols"
+    ]
+  }
+}
