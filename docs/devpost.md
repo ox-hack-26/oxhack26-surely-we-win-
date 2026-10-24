@@ -17,7 +17,9 @@ early warning, and a clear decision about what to do.
 - **Predict:** for every clinic, every week, ClinicDrift estimates the screening AI's catch rate
   (sensitivity for referable disease) from the images alone, before any expert grades arrive.
 - **Decide:** it raises an alarm only when the expected harm of missed cases is greater than the cost
-  of sending that clinic's scans for human review.
+  of sending that clinic's scans for human review. A *drift* alarm fires when the scans stop looking
+  like the validated ones; a *harm* alarm fires when the scans look normal but it is 90% sure the
+  catch rate is below the 80% UK screening standard (for example after a faulty software update).
 - **Act:** when an alarm fires, Gemini suggests the likely cause and drafts an MHRA-style incident
   report tagged with MIT AI Risk Repository categories, and ElevenLabs reads a short spoken alert to
   the clinic lead.
@@ -47,19 +49,22 @@ early warning, and a clear decision about what to do.
 
 ## Accomplishments that we're proud of
 
-- Alarms raised / true drops caught / false alarms: ClinicDrift caught **7 of 7** clinics whose
-  conditions changed, with **0 false alarms** across the 64 clinic-weeks without a change, and
-  **0 extra urgent cases missed**. Waiting for expert grades caught 1 of 7 and let 29.3 extra urgent
-  cases through (total cost £175k versus £377k at the default costs).
+- Alarms raised / true drops caught / false alarms: ClinicDrift caught **8 of 8** clinics whose
+  conditions changed, with **0 false alarms** across the 73 clinic-weeks without a change, and
+  **2.3 extra urgent cases missed**. Waiting for expert grades caught 2 of 8 and let 33.3 extra urgent
+  cases through (total cost £223k versus £440k at the default costs).
 - Weeks of warning before expert grades would have shown the drop: ClinicDrift alarmed in the same
-  week as the change (median), against a median of 12 weeks for waiting on grades. At the worn-camera
+  week as the change (median), against a median of 6 weeks for waiting on grades. At the worn-camera
   clinic it alarmed in week 9, 7 weeks before the catch rate collapsed (week 16); waiting for grades
   never flagged it within the 20 weeks.
-- Catch-rate estimate error versus true catch rate: on clinic-weeks whose scans still look like
-  training (drift score under 0.7), the label-free estimate was within 7.7 points of the real catch
-  rate on average (65 clinic-weeks, computed from `sample-data/weekly.csv`; with about 10 urgent cases
-  a week, much of that is noise in the real rate itself). Under heavy drift the estimate is not
-  reliable, which is why drift drives the alarm.
+- A failure drift can't see: at the faulty-software-update clinic (US-UPD-01) the vendor raised the
+  referral cut-off in week 10 (0.060 → 0.175). The scans look exactly the same, so drift stayed at
+  0.50 on average and watching drift never alarmed, while the real catch rate fell from 90% to 67%.
+  ClinicDrift raised a harm alarm in week 13, once it was 90% sure the catch rate was below 80%.
+- Catch-rate estimate error versus true catch rate: on the 73 clinic-weeks without a change, the
+  label-free estimate was off by 0.078 on average (7.8 points) and the real value was inside its 90%
+  band 95% of the time. Under heavy drift the estimate is not reliable (at the worn-camera clinic in
+  weeks 15–20 it averaged 94% against a real 66%), which is why drift drives the alarm.
 
 ## What we learned
 
@@ -68,8 +73,10 @@ cameras, not about patient groups.
 
 - A model can be confidently wrong: its own estimate of how well it is doing is the first thing to
   break when the images change.
-- Drift was the reliable signal here: no clinic-week without a change scored above 0.7, and 6 of 7
-  changes scored above 0.8 in their first week.
+- Drift was the reliable signal for changes to the scans: none of the 73 clinic-weeks without a change
+  scored above 0.7, and 6 of 7 changes to the scans scored above 0.8 in their first week. But no single
+  signal catches everything: watching drift missed the software update and watching the estimate
+  missed 7 of 8 changes; ClinicDrift, which uses both, missed none.
 - Putting a cost on missed cases and on reviews turns "is the AI still OK?" into a decision a clinic
   lead can act on and argue with.
 
@@ -85,18 +92,22 @@ cameras, not about patient groups.
 ### HRT: Best Use of Data for Predictions & Decision Making
 ClinicDrift turns unlabelled images into a per-clinic catch-rate prediction with an uncertainty band,
 then makes an explicit decision: pause and review when expected harm exceeds review cost.
-Results: across 4 monitoring policies replayed over 20 weeks at 9 clinics, ClinicDrift was the only
-one with every change caught, no false alarms and no extra missed cases, at the lowest total cost
-(£175k; watching drift alone £184k, waiting for grades £377k, watching the estimate £356k).
+Results: across 4 monitoring policies replayed over 20 weeks at 10 clinics, ClinicDrift was the only
+one to catch all 8 changes, with no false alarms, the fewest extra missed cases (2.3) and the lowest
+total cost (£223k; watching drift alone £382k, watching the estimate £382k, waiting for grades £440k).
 
 ### Best Use of Gemini
 Gemini looks at a flagged clinic's scan statistics and sample images to suggest a likely cause with
 evidence and checks, then drafts the incident report a human would otherwise write from scratch.
-Results: Gemini (gemini-3.6-flash) named the cause and rewrote the incident report for all 7
+Results: Gemini (gemini-3.6-flash) named the cause and rewrote the incident report for the 7 drift
 alarms from the replay, looking at 2 flagged and 2 typical training scans for each. Every cause it gave
 agreed with the rule-based check (camera or image quality, confidence 0.75 to 0.9) and added practical
 checks for the clinic; none of the reports quoted a catch rate, which can't be verified on a drift
-alarm. The answers are saved in `sample-data/gemini/`, so the demo replays them with no API quota.
+alarm. On the harm alarm at the faulty-software-update clinic, Gemini (gemini-3.5-flash-lite) called
+it model degradation from the software update (confidence 0.8; the clinic's description mentions the
+update) and said to audit the referral cut-off, where the rule-based check guessed a change in patient
+mix (confidence 0.55). The answers are saved in `sample-data/gemini/`, so the demo replays them with no
+API quota.
 
 ### Best Use of ElevenLabs
 A spoken alert of under 25 seconds tells a busy clinic lead what changed, why, and the first thing to check.
