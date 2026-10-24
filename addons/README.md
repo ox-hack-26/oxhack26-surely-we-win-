@@ -1,10 +1,10 @@
 # ClinicDrift add-ons
 
-What happens after the monitor raises an alarm for a clinic.
+What happens after the engine raises an alarm for a clinic.
 
 | Step | What it does | Uses | Without a key |
 |---|---|---|---|
-| Cause finder (`cause_finder.py`) | Compares the flagged week's scan statistics (and up to 4 sample scans) with training and names the most likely cause | Gemini | Rule-based answer |
+| Cause finder (`cause_finder.py`) | Compares the alarm's flagged scans with its reference training scans (statistics from `scans.parquet`, plus up to 4 of the images) and names the most likely cause | Gemini | Rule-based answer |
 | Incident report (`incident_report.py`) | Drafts an MHRA-style adverse incident report tagged with MIT AI Risk Repository categories | Gemini | Filled-in template |
 | Spoken alert (`voice_alert.py`) | Reads a short alert (under 25 s) aloud for the clinic lead | ElevenLabs | Skipped (text script still produced) |
 
@@ -12,31 +12,31 @@ What happens after the monitor raises an alarm for a clinic.
 
 ```bash
 pip install -r requirements-addons.txt
-cp .env.example .env          # optional: add GEMINI_API_KEY / ELEVENLABS_API_KEY
-python -m addons.run_demo     # uses addons/fixtures/fake_alarm.json
-python -m addons.run_demo path/to/alarm.json
-python -m pytest -q tests     # offline, no keys needed
+cp .env.example .env                          # optional: add GEMINI_API_KEY / ELEVENLABS_API_KEY
+python -m addons.run_demo                     # fake alarm + fake scans in addons/fixtures/
+python -m addons.run_demo path/to/alarm.json  # one real alarm
+python -m addons.run_demo --all               # every alarm in $CLINICDRIFT_DATA/processed/alarms/
+python -m pytest -q tests                     # offline, no keys needed
 ```
 
-Outputs go to `addons/out/` (git-ignored):
-`<clinic>_week<N>_cause.json`, `<clinic>_week<N>_incident_report.md`, `<clinic>_week<N>_alert.mp3`.
+Outputs go to `addons/out/` (git-ignored), named after the alarm file:
+`<clinic_id>_<week>_cause.json`, `<clinic_id>_<week>_incident_report.md`, `<clinic_id>_<week>_alert.mp3`.
 
-## Alarm format
+## What the add-ons read
 
-The prediction core hands over one JSON file per alarm (see `alarm_schema.py` and
-`fixtures/fake_alarm.json`):
+**The alarm file** is defined in [docs/handoffs.md](../docs/handoffs.md), section 4:
+`$CLINICDRIFT_DATA/processed/alarms/<clinic_id>_<week>.json`, written by the engine. All its fields
+are used as they are; rates are fractions from 0 to 1. `addons/fixtures/fake_alarm.json` is the example from handoffs.md.
 
-| Field | Type | Notes |
+**Optional extras.** Each one improves the output but nothing breaks without it:
+
+| From | Used for | If missing |
 |---|---|---|
-| `clinic_id`, `site`, `country` | string | |
-| `week` | int | |
-| `week_start` | string, optional | ISO date |
-| `device_name`, `device_version` | string, optional | defaults provided |
-| `estimated_catch_rate`, `ci_low`, `ci_high`, `baseline_catch_rate` | float 0-1 | |
-| `expected_harm`, `review_cost` | float | same units; alarm when harm > cost |
-| `expected_missed_cases` | float, optional | |
-| `flagged_scan_stats`, `training_scan_stats` | object | `n_scans` plus optional `mean_brightness`, `mean_contrast`, `mean_sharpness`, `mean_quality`, `mean_resolution_px`, `referral_score_mean`, `referral_rate` |
-| `sample_scan_paths` | list of strings | optional images sent to Gemini |
+| `processed/scans.parquet` rows for `flagged_scan_ids` and `reference_scan_ids` | brightness, sharpness, quality, width and `p_referable`, compared between the two sets | Cause is "unknown" with a note; drift and quality_mean are still reported |
+| `processed/weekly.parquet` (`n_scans` for the clinic and week) | "too few scans" check and the report text | Check skipped |
+| `clinicdrift.data.load_image(scan_id)` | Up to 2 flagged and 2 reference images sent to Gemini | No images sent |
+
+Site and country come from the `clinic_id` prefix (`messidor2-a` -> Messidor-2, France). Device name and version are fixed in `incident_report.py`.
 
 ## Note
 
