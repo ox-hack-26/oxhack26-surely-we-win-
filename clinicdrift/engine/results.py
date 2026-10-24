@@ -16,6 +16,7 @@ from clinicdrift.engine.estimate import load_inputs
 
 OUT = REPO / "docs" / "results.md"
 DEMO = "US-WEAR-01"
+UPDATE = "US-UPD-01"
 HEAVY_WEAR_FROM = 15  # weeks of US-WEAR-01 shown as "heavy wear"
 
 
@@ -70,6 +71,36 @@ def main() -> None:
     collapse = next((w for w in demo.index if w > wear_start and demo.loc[w, "true_sensitivity"] < ref["catch_rate"] - 0.2), None)
     first_drift = next((w for w in demo.index if w >= wear_start and demo.loc[w, "drift_auc"] > 0.8), None)
 
+    first_alarms = backtest.pivot(index="clinic_id", columns="policy", values="first_alarm")
+    changed_ids = [c for c, w in changed_at.items() if w]
+    image_changes = [c for c in changed_ids if not clinics[c].get("update_from_week")]
+
+    cd_sweep = sweep[sweep["policy"] == "ClinicDrift"].set_index("review_cost")
+    grades_sweep = sweep[sweep["policy"] == "wait for grades"].set_index("review_cost")
+    noisy = [r for r in cd_sweep.index if cd_sweep.loc[r, "false_alarms"] > 0]
+    pricey = [r for r in cd_sweep.index if cd_sweep.loc[r, "total_cost_gbp"] > grades_sweep.loc[r, "total_cost_gbp"]]
+    cost_caveat = ("- **Costs are illustrative**: across review costs from " + gbp(cd_sweep.index.min()) + " to " + gbp(cd_sweep.index.max())
+                   + (f" ClinicDrift raised false alarms at {', '.join(gbp(r) for r in noisy)}" if noisy else " ClinicDrift raised no false alarms")
+                   + (f", and at {', '.join(gbp(r) for r in pricey)} reviewing every changed clinic cost more than waiting for grades, "
+                      "because several of those clinics were actually fine" if pricey else "")
+                   + " (see the sweep).")
+    sw = weekly[weekly["clinic_id"] == "SW-MES-01"]
+    sw_before, sw_after = sw[~sw["changed"]], sw[sw["changed"]]
+    missed_by = {p: [c for c in changed_ids if pd.isna(first_alarms.loc[c, p])] for p in summary.index}
+    update_lines = []
+    if UPDATE in clinics:
+        upd = weekly[weekly["clinic_id"] == UPDATE].set_index("week")
+        upd_week = clinics[UPDATE]["update_from_week"]
+        before, after = upd.loc[: upd_week - 1], upd.loc[upd_week:]
+        upd_alarm = first_alarms.loc[UPDATE, "ClinicDrift"]
+        update_lines = [
+            f"- **A faulty software update** ({UPDATE}): in week {upd_week} the vendor raises the referral cut-off "
+            f"({before['referral_threshold'].iloc[0]:.3f} → {after['referral_threshold'].iloc[0]:.3f}). The scans look exactly the same, "
+            f"so drift stays at {after['drift_auc'].mean():.2f} on average and **watching drift never alarms**. The real catch rate falls from "
+            f"{pct(before['true_sensitivity'].mean())} to {pct(after['true_sensitivity'].mean())}. ClinicDrift raises a harm alarm in week "
+            f"{weeks(upd_alarm)}, once it is 90% sure the catch rate is below the 80% screening standard.",
+        ]
+
     lines = [
         "# ClinicDrift results",
         "",
@@ -90,13 +121,17 @@ def main() -> None:
         f"- **The demo clinic {DEMO}**: its camera starts wearing out in week {wear_start}. ClinicDrift raises the alarm in week "
         f"{weeks(demo_alarm)}" + (f", {collapse - int(demo_alarm)} weeks before the catch rate collapses (week {collapse})" if collapse and demo_alarm else "")
         + f". Waiting for grades never flags it within the 20 weeks, and {demo_bt.loc['wait for grades', 'extra_missed_before_alarm']:.0f} extra urgent cases are missed.",
+        *update_lines,
+        f"- **No single signal catches everything**: watching drift missed {len(missed_by['watch drift'])} of the "
+        f"{len(changed_ids)} changes and watching the estimate missed {len(missed_by['watch estimate'])}; "
+        f"ClinicDrift, which uses both, missed {len(missed_by['ClinicDrift'])}.",
         f"- **The AI's own confidence is fooled**: in weeks {HEAVY_WEAR_FROM}–20 at {DEMO} the label-free estimate averaged "
         f"{pct(heavy['est_sensitivity'].mean())} while the real catch rate averaged {pct(heavy['true_sensitivity'].mean())} "
         f"({pct(demo.loc[20, 'true_sensitivity'])} in week 20). That is why the decision rule stops trusting the estimate when drift is high.",
         f"- **Drift is reliable here**: none of the {len(unchanged)} clinic-weeks without a change scored above 0.7 "
         f"(highest {unchanged['drift_auc'].max():.2f}); "
-        f"{sum(1 for c, w in changed_at.items() if w and weekly[(weekly.clinic_id == c) & (weekly.week == w)].drift_auc.iloc[0] > 0.8)} of "
-        f"{sum(1 for w in changed_at.values() if w)} changes scored above 0.8 in their first week"
+        f"{sum(1 for c in image_changes if weekly[(weekly.clinic_id == c) & (weekly.week == changed_at[c])].drift_auc.iloc[0] > 0.8)} of "
+        f"{len(image_changes)} changes to the scans themselves scored above 0.8 in their first week"
         + (f", and {DEMO}'s slow wear crossed 0.8 in week {first_drift} (wear {demo_wear[first_drift]:.2f}, barely visible)." if first_drift else "."),
         "",
         "## What the numbers come from",
@@ -127,7 +162,9 @@ def main() -> None:
         "",
         "Policies: **wait for grades** alarms when the graded catch rate over 8 weeks is 15 points below validated (at least 5 graded urgent cases); "
         "**watch estimate** when the label-free estimate is 10 points below; **watch drift** when drift stays above 0.8 for two weeks; "
-        "**ClinicDrift** is the cost-loss rule in `decide.py`. A first alarm pulls the AI for review; harm counts from the change until then.",
+        "**ClinicDrift** (`decide.py`) raises a *drift* alarm when the scans stop looking validated and a *harm* alarm when it is "
+        "90% sure the catch rate is below the 80% UK screening standard, each only if the expected harm outweighs a review. "
+        "A first alarm pulls the AI for review; harm counts from the change until then.",
         "",
         "First alarm week per clinic (– = never):",
         "",
@@ -171,12 +208,17 @@ def main() -> None:
         f"- **Model**: {model['model']}. Numbers will change when it changes; regenerate this file.",
         "- **Simulated clinics**: real public scans, but the clinics, camera switches and wear are simulated. The datasets carry no age, sex or ethnicity, "
         "so make no fairness claims about patient groups, only about clinics and cameras. This APTOS copy is 224 px, so the APTOS clinics test low resolution, not Indian patients.",
-        "- **Costs are illustrative**: cheap reviews make the rule raise false alarms on noise, and very expensive reviews make checking every drifted clinic cost more than waiting (see the sweep).",
-        "- **Watching drift alone does almost as well here**, because every harmful change in this replay also changed how the scans look. ClinicDrift adds a decision priced in pounds, "
-        "alarms a week sooner than a two-week drift rule, and folds in grades as they arrive. A change that harms without showing in the images is untested.",
-        f"- **New camera vs worn camera**: at SW-MES-01 the new camera made this model refer more healthy patients "
-        f"({weekly[(weekly.clinic_id == 'SW-MES-01') & ~weekly.changed].true_false_referrals.mean():.0f} → "
-        f"{weekly[(weekly.clinic_id == 'SW-MES-01') & weekly.changed].true_false_referrals.mean():.0f} a week) rather than miss urgent cases. Only the worn camera produced missed cases.",
+        cost_caveat,
+        (f"- **The evidence test costs time**: ClinicDrift only raises a harm alarm once it is 90% sure the catch rate is below 80%, so on the software update it waits "
+         f"{weeks(first_alarms.loc[UPDATE, 'ClinicDrift'] - clinics[UPDATE]['update_from_week'])} weeks where watching the estimate alarms at once. "
+         "That is the price of not pulling a healthy AI over a few weeks of noise: without the test, a handful of low grades was enough to pull healthy clinics."
+         if UPDATE in clinics and not pd.isna(first_alarms.loc[UPDATE, "ClinicDrift"]) else
+         "- **Watching drift alone does almost as well here**, because every harmful change in this replay also changed how the scans look."),
+        "- **The 80% floor** is the long-standing UK (Exeter / British Diabetic Association) standard of at least 80% sensitivity for diabetic eye screening.",
+        f"- **A new camera doesn't always mean missed cases**: at SW-MES-01 the new camera moved this model's catch rate "
+        f"{pct(sw_before.true_sensitivity.mean())} → {pct(sw_after.true_sensitivity.mean())} and its healthy referrals "
+        f"{sw_before.true_false_referrals.mean():.0f} → {sw_after.true_false_referrals.mean():.0f} a week. The missed cases came from "
+        f"the worn camera ({DEMO}) and the faulty update ({UPDATE}).",
         "- **The belief band** describes the clinic's underlying catch rate. A single week has only about 10 urgent cases, so that week's real value often falls outside it; "
         "don't present it as a 90% interval for one week. The label-free estimate's band is the one checked against weekly values above.",
         "- **Drift alarms say \"can't verify\", not \"X% caught\"**: when drift triggers the alarm the belief is pulled towards 50% with a very wide band "

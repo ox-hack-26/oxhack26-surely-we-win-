@@ -33,7 +33,7 @@ When the classifier is trained, also write `model.json` with `referral_threshold
 
 ## 2. `stream.parquet` and `clinics.json`: Tejas's replay (Sneha loads them into Tiger)
 
-Made by `python -m clinicdrift.engine.replay`. 9 simulated clinics see 8,500 scans over 20 weeks from 5 January 2026, each scan used once. About 10% of scans get an expert grade, 5 to 7 weeks after the scan.
+Made by `python -m clinicdrift.engine.replay`. 10 simulated clinics see 9,500 scans over 20 weeks from 5 January 2026, each scan used once. About 10% of scans get an expert grade, 5 to 7 weeks after the scan. Each clinic's times and grades come from its own random stream, so adding a clinic changes no other clinic's data.
 
 | Column | Type | Meaning |
 | --- | --- | --- |
@@ -43,15 +43,17 @@ Made by `python -m clinicdrift.engine.replay`. 9 simulated clinics see 8,500 sca
 | `week` | int | Week number, 1 = first week |
 | `week_start` | date | Monday the week starts |
 | `wear` | float 0–1 | Camera wear applied to this scan (0 for every clinic but `US-WEAR-01`) |
+| `model_update` | bool | The faulty software update was running when this scan was judged (only `US-UPD-01`, from week 10): its referral cut-off is raised to one that catches only 70% of validation urgent cases |
 | `ts` | timestamp | When the scan was taken (simulated, weekdays 08:00–18:00) |
 | `graded_at` | timestamp or null | When its expert grade arrives. The engine must not use `grade` before this time |
 
-`clinics.json` lists each clinic: `clinic_id`, `site`, `country`, `note`, `segments` (source and first week), `scans_per_week`, `switch_week` (null unless the clinic gets a new camera) and `wear_from_week` (null unless its camera wears out). The dashboard's clinic list comes from here.
+`clinics.json` lists each clinic: `clinic_id`, `site`, `country`, `note`, `segments` (source and first week), `scans_per_week`, `switch_week` (null unless the clinic gets a new camera), `wear_from_week` (null unless its camera wears out) and `update_from_week` (null unless it gets the faulty update). The dashboard's clinic list comes from here; don't hard-code the clinics.
 
 | Clinic | Scans | What should happen |
 | --- | --- | --- |
 | `US-EYE-01`, `US-EYE-02` | Held-out EyePACS, 50 a week | Same as training: the alarm stays quiet |
 | `US-WEAR-01` | Held-out EyePACS; the camera wears from week 7 (blurrier and darker each week) | The main demo: the AI misses up to 9 urgent cases a week by week 20 while its own confidence says all is well; drift flags it by week 8–9 |
+| `US-UPD-01` | Held-out EyePACS; a vendor update raises the referral cut-off from week 10 | The scans look the same, so drift stays quiet and watching drift never alarms; the catch rate drops and ClinicDrift raises a `harm` alarm (week 13 on the stand-in) |
 | `SW-MES-01` | EyePACS, then Messidor-2 from week 9 | A new camera: the AI over-refers healthy patients rather than missing cases |
 | `SW-APT-01` | EyePACS, then APTOS from week 11 | A second camera switch |
 | `FR-MES-01` | Messidor-2 from day one | Different from the start |
@@ -77,17 +79,19 @@ One row per clinic per week.
 | `lookalikes` | float | How many labelled reference cases resemble this week's scans (noisy; small = little evidence) |
 | `quality_mean` | float 0–1 | Mean image quality |
 | `referral_rate` | float 0–1 | Share of scans the model referred |
+| `referral_threshold` | float 0–1 | The cut-off the clinic used that week (higher at `US-UPD-01` after its update) |
 | `true_cases`, `true_sensitivity`, `true_missed`, `true_false_referrals` | | Hindsight from every expert grade. Only for the backtest and the dashboard's "real" line: a real clinic would not know these that week |
 | `trust` | float 0–1 | How far the label-free estimate is trusted: 1 while `drift_auc` is under 0.7, 0 above 0.9 |
 | `graded_cases`, `graded_caught` | int | Referable cases among the expert grades that have arrived by the end of the week (last 8 weeks of scans), and how many the AI referred |
 | `catch_rate`, `catch_low`, `catch_high` | float 0–1 | **The engine's belief about the catch rate**, with a 90% band: the estimate, discounted by trust, plus the grades so far. Plot this as "our estimate" |
 | `belief_cases`, `belief_missed` | float | Referable cases and missed cases that week under that belief |
 | `expected_harm` | float £ | Expected extra harm of carrying on for the horizon (6 weeks) compared with validated performance |
-| `alarm_this_week` | bool | This week's decision on its own: `expected_harm > review cost` |
+| `p_below_standard` | float 0–1 | Belief that the catch rate is below 80%, the UK screening standard |
+| `alarm_this_week` | bool | This week's decision on its own: `expected_harm > review cost`, and either `trust < 0.5` (drift) or `p_below_standard >= 0.9` (harm) |
 | `alarm` | bool | Whether the AI is pulled for review. Once on it stays on until someone reviews it, so old grades can't switch it off |
-| `alarm_reason` | string or null | `drift` (the scans no longer look validated) or `harm` (the estimate itself dropped) |
+| `alarm_reason` | string or null | `drift` (the scans no longer look validated, so the catch rate can't be verified) or `harm` (the scans look normal but we're 90% sure the catch rate is below 80%) |
 
-`python -m clinicdrift.engine.estimate` writes the label-free columns to `weekly_estimates.parquet`; `python -m clinicdrift.engine.decide` adds the rest and writes `weekly.parquet`, the alarm files and `decision_settings.json` (costs and reference levels). Default costs are illustrative: £10,000 per missed referable case, £150 per unnecessary referral, £25,000 per review, 6-week horizon. For the cost sliders the dashboard can redo the decision from these columns: `expected_harm = 6 × (10,000 × belief_cases × (validated catch rate − catch_rate) + 150 × (referrals − catch_rate × belief_cases − usual false referrals))`, or just call `decide.run(Costs(...), write=False)`.
+`python -m clinicdrift.engine.estimate` writes the label-free columns to `weekly_estimates.parquet`; `python -m clinicdrift.engine.decide` adds the rest and writes `weekly.parquet`, the alarm files and `decision_settings.json` (costs and reference levels). Default costs are illustrative: £10,000 per missed referable case, £150 per unnecessary referral, £25,000 per review, 6-week horizon. For the cost sliders the dashboard can redo the decision from these columns: `expected_harm = 6 × (10,000 × belief_cases × (validated catch rate − catch_rate) + 150 × (referrals − catch_rate × belief_cases − usual false referrals))`, then apply the drift/harm test above, or just call `decide.run(Costs(...), write=False)`.
 
 `python -m clinicdrift.engine.backtest` replays the 20 weeks under four policies (wait for grades, watch the estimate, watch drift, ClinicDrift) and writes `backtest.parquet`, `backtest_summary.json` and a review-cost sweep in `backtest_sweep.parquet`.
 

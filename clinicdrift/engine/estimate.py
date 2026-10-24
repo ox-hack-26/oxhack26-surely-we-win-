@@ -25,6 +25,8 @@ from sklearn.model_selection import StratifiedKFold, cross_val_predict
 from sklearn.preprocessing import StandardScaler
 
 from clinicdrift.config import PROCESSED_DIR
+from clinicdrift.data.sources import TRAINING_SOURCE
+from clinicdrift.engine.replay import UPDATE_TARGET_SENSITIVITY
 
 SEED = 2026
 N_COMPONENTS = 50   # image features are compressed to this many numbers for the drift check
@@ -40,6 +42,21 @@ def load_inputs():
     features = np.load(base / "features.npy").astype(np.float32)
     model = json.loads((base / "model.json").read_text(encoding="utf-8"))
     return scans, features, model, base
+
+
+def referral_thresholds(rows: pd.DataFrame, scans: pd.DataFrame, model: dict) -> np.ndarray:
+    """The referral cut-off each replayed scan was judged against: the validated one, or a faulty update's.
+
+    The faulty update's cut-off is the one that would catch only UPDATE_TARGET_SENSITIVITY of the
+    referable validation scans, so it follows whichever model is in place.
+    """
+    base = model["referral_threshold"]
+    updated = rows["model_update"].to_numpy(bool) if "model_update" in rows else np.zeros(len(rows), bool)
+    if not updated.any():
+        return np.full(len(rows), base)
+    val = scans[(scans["source"] == TRAINING_SOURCE) & (scans["split"] == "val")]
+    raised = float(np.quantile(val.loc[val["referable"], "p_referable"], 1 - UPDATE_TARGET_SENSITIVITY))
+    return np.where(updated, max(raised, base), base)
 
 
 class Reference:
@@ -101,18 +118,18 @@ def catch_rate_estimate(q: np.ndarray, refer: np.ndarray, rng: np.random.Generat
 
 
 def weekly_estimates(stream: pd.DataFrame, scans: pd.DataFrame, features: np.ndarray, model: dict) -> pd.DataFrame:
-    threshold = model["referral_threshold"]
     rng = np.random.default_rng(SEED)
     ref = Reference(scans, features, rng)
     row_of = pd.Series(np.arange(len(scans)), index=scans["scan_id"])
     seen = stream.merge(scans[["scan_id", "p_referable", "referable", "quality"]], on="scan_id", validate="one_to_one")
     seen["row"] = row_of.loc[seen["scan_id"]].to_numpy()
+    seen["threshold"] = referral_thresholds(seen, scans, model)
 
     rows = []
     for (clinic, week), g in seen.groupby(["clinic_id", "week"], sort=True):
         p = g["p_referable"].to_numpy()
         y = g["referable"].to_numpy()
-        refer = p >= threshold
+        refer = p >= g["threshold"].to_numpy()
         drift_auc, lookalikes = ref.drift(ref.project(features[g["row"].to_numpy()]))
         rows.append({
             "clinic_id": clinic,
@@ -124,6 +141,7 @@ def weekly_estimates(stream: pd.DataFrame, scans: pd.DataFrame, features: np.nda
             "lookalikes": lookalikes,
             "quality_mean": float(g["quality"].mean()),
             "referral_rate": float(refer.mean()),
+            "referral_threshold": float(g["threshold"].max()),
             # Hindsight, from every expert grade: for the backtest and the dashboard's "real" line only.
             "true_cases": int(y.sum()),
             "true_sensitivity": (refer & y).sum() / y.sum() if y.any() else np.nan,

@@ -11,5 +11,7 @@
     "prevalence": 0.18965010291090856
   },
   "drift_trusted": 0.7,
-  "drift_untrusted": 0.9
+  "drift_untrusted": 0.9,
+  "min_catch_rate": 0.8,
+  "confidence": 0.9
 }
