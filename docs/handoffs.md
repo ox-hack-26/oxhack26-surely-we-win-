@@ -6,11 +6,13 @@ Everything lives in `$CLINICDRIFT_DATA/processed/`. Change a column here first, 
 
 One row per scan, all four sources. Ship APTOS first so Tejas can start; `p_referable` can be empty until the classifier is trained.
 
+Start from `clinicdrift.data.sources.load_scans()`. It already has `scan_id`, `source`, `split`, `grade` and `referable`, plus `image_name`, `file` and `row_in_file` for finding the image; add the other columns. `load_image(scan_id)` in the same file returns any scan as a PIL image. Train only on `split == "train"` and tune on `val`. Never train on `test`: the replay uses those scans for the clinics that should stay quiet.
+
 | Column | Type | Meaning |
 | --- | --- | --- |
 | `scan_id` | string | `<source>-<row number>`, e.g. `messidor2-00042`. Unique |
 | `source` | string | `eyepacs`, `aptos`, `messidor2` or `idrid` |
-| `split` | string | `train`, `val` or `test` for EyePACS; `deploy` for the other three |
+| `split` | string | `train`, `val` or `test` for EyePACS, split by patient (70/10/20); `deploy` for the other three |
 | `grade` | int 0–4 | Expert grade |
 | `referable` | bool | `grade >= 2`: the patient must be referred |
 | `p_referable` | float 0–1 | Classifier's probability that the scan needs referral |
@@ -20,20 +22,40 @@ One row per scan, all four sources. Ship APTOS first so Tejas can start; `p_refe
 | `sharpness` | float | Variance of the Laplacian |
 | `width`, `height` | int | Original size in pixels |
 
+Worn-camera copies of scans have IDs like `eyepacs-01234@0.40`: the original scan, blurred and darkened to wear level 0.40 by `clinicdrift/data/degrade.py`. `load_image` returns them already worn, and they need their own rows (and a `wear` column, 0 for normal scans), because the model sees a different image.
+
 Image features go in `features/<source>.npy`: float32, shape `(n_scans, d)`, rows in the same order as that source's rows in `scans.parquet`.
 
-Sarah also adds `clinicdrift.data.load_image(scan_id)` so Vansh can fetch any scan for Gemini.
+Until Sarah's files exist, `python -m clinicdrift.data.standin` writes a stand-in `scans.parquet`, `features.npy` (one array, same row order) and `model.json` under `processed/standin/`: frozen ImageNet ResNet-50 features plus a logistic regression, for the ~19,000 scans the engine needs. The engine switches to Sarah's files as soon as `processed/scans.parquet` exists.
 
-## 2. `stream.parquet`: Tejas's replay (Sneha loads it into Tiger)
+When the classifier is trained, also write `model.json` with `referral_threshold`, the `p_referable` cut-off for referring a scan. Pick it on `val` so the model catches 90% of referable cases: screening would rather over-refer than miss sight-threatening disease. Add `val_sensitivity` and `val_specificity` at that threshold.
 
-The deployment simulation: every `deploy` scan gets a clinic and a time.
+## 2. `stream.parquet` and `clinics.json`: Tejas's replay (Sneha loads them into Tiger)
+
+Made by `python -m clinicdrift.engine.replay`. 9 simulated clinics see 8,500 scans over 20 weeks from 5 January 2026, each scan used once. About 10% of scans get an expert grade, 5 to 7 weeks after the scan.
 
 | Column | Type | Meaning |
 | --- | --- | --- |
 | `scan_id` | string | Joins to `scans.parquet` |
-| `clinic_id` | string | Simulated clinic, e.g. `FR-MES-03` (country, site, number) |
-| `ts` | timestamp | When the scan was taken (simulated) |
-| `graded_at` | timestamp or null | When its expert grade arrives. Only a sample of scans gets one, weeks later. The engine must not use `grade` before this time |
+| `clinic_id` | string | Simulated clinic, e.g. `FR-MES-01` (country, site, number) |
+| `source` | string | Dataset the scan came from |
+| `week` | int | Week number, 1 = first week |
+| `week_start` | date | Monday the week starts |
+| `wear` | float 0–1 | Camera wear applied to this scan (0 for every clinic but `US-WEAR-01`) |
+| `ts` | timestamp | When the scan was taken (simulated, weekdays 08:00–18:00) |
+| `graded_at` | timestamp or null | When its expert grade arrives. The engine must not use `grade` before this time |
+
+`clinics.json` lists each clinic: `clinic_id`, `site`, `country`, `note`, `segments` (source and first week), `scans_per_week`, `switch_week` (null unless the clinic gets a new camera) and `wear_from_week` (null unless its camera wears out). The dashboard's clinic list comes from here.
+
+| Clinic | Scans | What should happen |
+| --- | --- | --- |
+| `US-EYE-01`, `US-EYE-02` | Held-out EyePACS, 50 a week | Same as training: the alarm stays quiet |
+| `US-WEAR-01` | Held-out EyePACS; the camera wears from week 7 (blurrier and darker each week) | The main demo: the AI misses up to 9 urgent cases a week by week 20 while its own confidence says all is well; drift flags it by week 8–9 |
+| `SW-MES-01` | EyePACS, then Messidor-2 from week 9 | A new camera: the AI over-refers healthy patients rather than missing cases |
+| `SW-APT-01` | EyePACS, then APTOS from week 11 | A second camera switch |
+| `FR-MES-01` | Messidor-2 from day one | Different from the start |
+| `IN-APT-01`, `IN-APT-02` | APTOS from day one | Different from the start |
+| `IN-IDR-01` | IDRiD, 25 a week | Small clinic, wider uncertainty |
 
 ## 3. `weekly.parquet`: Tejas → Sneha
 
@@ -42,17 +64,22 @@ One row per clinic per week.
 | Column | Type | Meaning |
 | --- | --- | --- |
 | `clinic_id` | string | |
-| `week` | date | Monday the week starts |
+| `week` | int | Week number, 1 = first week |
+| `week_start` | date | Monday the week starts |
 | `n_scans` | int | Scans that week |
 | `est_sensitivity` | float 0–1 | Estimated share of referable cases the AI catches, from images alone |
-| `est_low`, `est_high` | float 0–1 | 90% band around the estimate |
-| `true_sensitivity` | float or null | From expert grades that have arrived by then; null until there are enough |
+| `est_low`, `est_high` | float 0–1 | 90% band around the estimate, wide enough to cover the catch rate the grades will show |
+| `expected_cases` | float | Expected referable cases that week |
 | `expected_missed` | float | Expected referable cases missed that week |
-| `drift` | float | How different that week's scans look from training (0 = same) |
-| `quality_mean` | float | Mean image quality |
+| `expected_false_referrals` | float | Expected healthy patients referred that week |
+| `drift_auc` | float 0.5–1 | How easily a classifier tells this week's scans from training scans: about 0.5 = same as training, near 1 = clearly different |
+| `lookalikes` | float | How many labelled reference cases resemble this week's scans (noisy; small = little evidence) |
+| `quality_mean` | float 0–1 | Mean image quality |
+| `referral_rate` | float 0–1 | Share of scans the model referred |
+| `true_cases`, `true_sensitivity`, `true_missed`, `true_false_referrals` | | Hindsight from every expert grade. Only for the backtest and the dashboard's "real" line: a real clinic would not know these that week |
 | `alarm` | bool | Alarm at the default costs |
 
-The dashboard recomputes the alarm when the cost sliders move, so it needs `expected_missed`, not just the flag. Default rule: alarm when `expected_missed × cost_missed_case > cost_review`. Tejas may refine the rule; the columns stay.
+The engine writes everything except `alarm` to `weekly_estimates.parquet` now (`python -m clinicdrift.engine.estimate`); `weekly.parquet` adds `alarm` once the decision rule is in. The dashboard recomputes the alarm when the cost sliders move, so it needs the expected counts, not just the flag. Draft rule: alarm when `expected_missed × cost_missed_case + expected_false_referrals × cost_false_referral > cost_review`, or when `drift_auc` says the estimates can no longer be trusted.
 
 ## 4. `alarms/<clinic_id>_week<week>.json`: Tejas → Vansh
 
@@ -60,7 +87,7 @@ One file per alarm, in the format Vansh's add-ons read (`Alarm` in `addons/alarm
 
 ```json
 {
-  "clinic_id": "FR-MES-03",
+  "clinic_id": "FR-MES-01",
   "site": "Messidor-2",
   "country": "France",
   "week": 7,
@@ -72,6 +99,7 @@ One file per alarm, in the format Vansh's add-ons read (`Alarm` in `addons/alarm
   "expected_missed_cases": 3.4,
   "expected_harm": 4200,
   "review_cost": 1500,
+  "referral_threshold": 0.27,
   "flagged_scan_stats": {
     "n_scans": 64,
     "mean_brightness": 0.38,
@@ -111,6 +139,7 @@ One file per alarm, in the format Vansh's add-ons read (`Alarm` in `addons/alarm
 | `expected_missed_cases` | float | Expected referable cases missed that week |
 | `expected_harm` | float | `expected_missed_cases × cost_missed_case`, in the cost sliders' units |
 | `review_cost` | float | Cost of pulling the AI for review, same units |
+| `referral_threshold` | float 0–1 | `p_referable` cut-off for referring a scan, copied from `model.json` |
 | `flagged_scan_stats` | object | Stats for this clinic-week's scans (below) |
 | `training_scan_stats` | object | The same stats for the EyePACS training scans |
 | `flagged_scan_ids` | list of strings | This clinic-week's scans that look least like training |
@@ -127,8 +156,8 @@ Each stats object (`ScanStats`) summarises the scans it describes, from `scans.p
 | `mean_quality` | float 0–1 | Mean of `quality` |
 | `mean_resolution_px` | float | Mean of `width` |
 | `referral_score_mean` | float 0–1 | Mean of `p_referable` |
-| `referral_rate` | float 0–1 | Share of scans the model refers (`p_referable` at or above its operating threshold) |
+| `referral_rate` | float 0–1 | Share of scans the model refers: `p_referable >= referral_threshold` |
 
 Gemini compares the flagged and training stats, and the scans themselves where it can, to name the likely cause. `estimated_catch_rate`, `ci_low`, `ci_high` and `expected_missed_cases` are the same numbers as `est_sensitivity`, `est_low`, `est_high` and `expected_missed` in `weekly.parquet` for that clinic and week.
 
-**To do (Vansh):** add `flagged_scan_ids` and `reference_scan_ids` to `Alarm`. Until then pydantic ignores them, so nothing breaks.
+**To do (Vansh):** add `flagged_scan_ids`, `reference_scan_ids` and `referral_threshold` to `Alarm`. Until then pydantic ignores them, so nothing breaks. Read the threshold from the alarm rather than hard-coding it; fall back to 0.5 only when it is missing.
