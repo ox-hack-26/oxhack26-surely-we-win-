@@ -9,7 +9,7 @@ Predicts when an eye-screening AI has quietly got worse at a clinic, weeks befor
 | Tejas | Prediction and decision engine | `clinicdrift/engine/` |
 | Sarah | Data and model | `clinicdrift/data/`, `scripts/` |
 | Sneha | Dashboard and database | `web/`, `db/` |
-| Vansh | Alarm actions (Gemini, ElevenLabs) and pitch | `clinicdrift/actions/` |
+| Vansh | Alarm actions (Gemini, ElevenLabs) and pitch | `addons/` |
 
 The files each person hands to the next are defined in [docs/handoffs.md](docs/handoffs.md). Change them there first, then tell whoever reads them.
 
@@ -33,7 +33,7 @@ clinicdrift/
   config.py      where the data folder is; reads .env
   data/          Sarah: load scans, image quality, image features, classifier
   engine/        Tejas: catch-rate estimate, alarm rule, replay, backtest
-  actions/       Vansh: Gemini cause-finding and report, ElevenLabs alert
+addons/          Vansh: Gemini cause-finding and report, ElevenLabs alert (see addons/README.md)
 db/schema.sql    Sneha: Tiger Data tables
 docs/            hand-off formats
 scripts/         one-off scripts (downloads)
