@@ -86,7 +86,8 @@ def main() -> None:
         "# Model report: the accuracy drop at each site",
         "",
         "Made by `python -m clinicdrift.data.report`. The classifier is "
-        f"`{model['arch']}` fine-tuned on {model['n_train']:,} EyePACS training scans at {model['image_size']} px. "
+        f"`{model['arch']}` fine-tuned on {model['n_train']:,} EyePACS training scans at {model['image_size']} px "
+        f"for {model['epochs_run']} of {model['epochs_planned']} planned epochs (best on val: epoch {model['best_epoch']}). "
         f"The referral threshold ({threshold:.3f}) was set on EyePACS val to catch {model['target_sensitivity']:.0%} "
         "of referable cases (grade 2 or above).",
         "",

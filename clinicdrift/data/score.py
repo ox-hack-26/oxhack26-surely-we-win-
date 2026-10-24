@@ -54,6 +54,12 @@ def rates(p: np.ndarray, y: np.ndarray, threshold: float) -> dict:
             "n_scans": int(len(y)), "n_referable": int(y.sum())}
 
 
+def _epochs_run() -> int:
+    """Epochs that finished, from train.py's log; training may have been stopped early."""
+    log = MODEL_FILE.parent / "train_log.csv"
+    return len(pd.read_csv(log)) if log.exists() else 0
+
+
 def main() -> None:
     start = time.time()
     scans = pd.read_parquet(PREPARED)
@@ -94,7 +100,8 @@ def main() -> None:
         "n_val": val_rates["n_scans"],
         "n_test": test_rates["n_scans"],
         "best_epoch": checkpoint["epoch"],
-        "epochs": checkpoint["epochs"],
+        "epochs_run": _epochs_run(),
+        "epochs_planned": checkpoint["epochs"],
     }
     scans["p_referable"] = p
     scans = scans[SCAN_COLUMNS + [c for c in scans.columns if c not in SCAN_COLUMNS]]
