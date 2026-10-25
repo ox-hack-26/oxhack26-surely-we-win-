@@ -69,6 +69,7 @@ img { display: block; max-width: 100%; }
 .btn--primary { background: var(--ink); color: var(--ground); }
 .btn--primary:hover { background: var(--ink-bright); }
 .btn--primary:active { background: var(--ink-2); }
+a.btn { text-decoration: none; }
 .btn--ghost { background: transparent; border-color: var(--hairline); color: var(--ink); }
 .btn--ghost:hover { background: var(--panel-2); border-color: var(--hairline-strong); }
 .btn--ghost:active { background: var(--panel-3); }
@@ -147,8 +148,7 @@ img { display: block; max-width: 100%; }
 .main { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 372px; min-height: 0; overflow: clip; }
 .stage-wrap { position: relative; min-width: 0; min-height: 0; overflow: clip; }
 .stage { position: absolute; inset: 0; z-index: var(--z-stage); }
-.view-results .stage-wrap, .view-results .rail,
-.view-dashboard .stage-wrap, .view-dashboard .rail { visibility: hidden; }
+.view-results .stage-wrap, .view-results .rail { visibility: hidden; }
 
 /* Labels drawn by the 3D view (drei Html). Never interactive: the rail is the keyboard path. */
 .stage-label, .stage-note { pointer-events: none; }
@@ -470,10 +470,6 @@ input[type="range"]:disabled { opacity: 0.4; cursor: default; }
 .timeline__range { position: relative; }
 
 /* ---------- Results ---------- */
-.dashboard { position: absolute; inset: 0; z-index: var(--z-drawer); display: flex; flex-direction: column; background: var(--ground); }
-.dashboard__note { padding: var(--s-2) var(--s-5); border-bottom: 1px solid var(--hairline); }
-.dashboard__note a { color: var(--ink-2); }
-.dashboard iframe { flex: 1; width: 100%; border: 0; display: block; }
 .results { position: absolute; inset: 0; z-index: var(--z-drawer); overflow-y: auto; background: var(--ground); }
 .results__inner { max-width: 1180px; margin: 0 auto; padding: var(--s-8) var(--s-6) var(--s-16); display: grid; gap: var(--s-6); }
 .results__head { display: grid; gap: var(--s-3); max-width: 820px; }
