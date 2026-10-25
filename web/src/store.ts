@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 import { decideAll, type Decisions } from "./data/model";
 import type { Bundle, Costs } from "./data/types";
 
-export type View = "monitor" | "results";
+export type View = "monitor" | "results" | "dashboard";
 /** The 3D view: the clinics on a globe, this week's columns, or every week as ribbons. */
 export type Mode = "world" | "now" | "history";
 
