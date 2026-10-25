@@ -50,7 +50,7 @@ against £489k), though watching the estimate is cheapest (£352k).)
 
 ## Slide 5: What happens when it fires (40 s, live)
 
-**Live demo:** `python -m addons.run_demo --clinic US-WEAR-01 --replay` (no wifi or keys needed).
+**Live demo:** `python -m addons.run_demo --clinic US-WEAR-01 --replay --no-images` (no wifi or keys needed; `--no-images` matches the answers Gemini gave from the numbers alone).
 Have `addons/out/US-WEAR-01_week8_incident_report.md` open in a second window to show the report.
 
 > When the alarm fires, the clinic lead needs to know what to do. Gemini looks at the flagged scans

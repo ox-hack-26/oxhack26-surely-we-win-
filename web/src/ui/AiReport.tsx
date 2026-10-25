@@ -31,9 +31,11 @@ const base = `${import.meta.env.BASE_URL}data/gemini/`;
 export function AiReport() {
   const week = useStore((s) => s.week);
   const selected = useStore((s) => s.selected);
+  const story = useStore((s) => s.story);
   const [records, setRecords] = useState<GeminiRecord[]>([]);
   const [closed, setClosed] = useState<string | null>(null);
-  const [min, setMin] = useState(false);
+  // Starts as a compact bar, so it never covers the opening globe; opens when that clinic is opened.
+  const [min, setMin] = useState(true);
 
   useEffect(() => {
     fetch(`${base}index.json`)
@@ -45,10 +47,14 @@ export function AiReport() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (selected && records.some((r) => r.clinic_id === selected)) setMin(false);
+  }, [selected, records]);
+
   const raised = records.filter((r) => r.week <= week);
   const record = raised.find((r) => r.clinic_id === selected) ?? (selected ? undefined : raised[0]);
   const key = record && `${record.clinic_id}-${record.week}`;
-  if (!record || closed === key) return null;
+  if (!record || closed === key || story !== null) return null; // the story card has this corner
 
   return (
     <section className={`ai-report${min ? " is-min" : ""}`} aria-label="AI report">
