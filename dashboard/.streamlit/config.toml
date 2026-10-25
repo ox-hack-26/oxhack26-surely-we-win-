@@ -1,0 +1,8 @@
+# Match the web app's colours (web/src/styles/tokens.css) so the two read as one product.
+[theme]
+base = "dark"
+primaryColor = "#3987e5"
+backgroundColor = "#0d0d0d"
+secondaryBackgroundColor = "#1a1a19"
+textColor = "#f0efec"
+font = "sans serif"

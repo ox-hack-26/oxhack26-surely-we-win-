@@ -1,6 +1,16 @@
 import { setState, useStore } from "../store";
 import { startStory } from "./Story";
 
+/** The Streamlit dashboard (dashboard/app.py) reads the scans live from Tiger Data. It is its own
+ *  server: localhost:8501 locally, port 80 of the same host on the Vultr VM; VITE_DASHBOARD_URL
+ *  overrides both. */
+function dashboardUrl(): string {
+  const set = import.meta.env.VITE_DASHBOARD_URL as string | undefined;
+  if (set) return set;
+  const { protocol, hostname } = window.location;
+  return hostname === "localhost" || hostname === "127.0.0.1" ? `${protocol}//${hostname}:8501/` : `${protocol}//${hostname}/`;
+}
+
 export function TopBar() {
   const view = useStore((s) => s.view);
   const hindsight = useStore((s) => s.hindsight);
@@ -21,15 +31,15 @@ export function TopBar() {
         <button type="button" aria-pressed={view === "results"} onClick={() => setState({ view: "results", story: null, playing: false })}>
           Results
         </button>
-        <button type="button" aria-pressed={view === "dashboard"} onClick={() => setState({ view: "dashboard", story: null, playing: false })}>
-          Dashboard
-        </button>
       </nav>
       <label className="switch">
         <input type="checkbox" role="switch" checked={hindsight} onChange={(e) => setState({ hindsight: e.target.checked })} />
         <span className="switch__track" aria-hidden="true" />
         <span>Hindsight</span>
       </label>
+      <a className="btn btn--ghost" href={dashboardUrl()} target="_blank" rel="noreferrer">
+        Live data ↗
+      </a>
       <button type="button" className="btn btn--primary" onClick={startStory}>
         Play the story
       </button>
