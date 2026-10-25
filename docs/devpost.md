@@ -3,7 +3,7 @@
 > Draft. Numbers are copied from `docs/results.md` (and `sample-data/`), which come from the
 > **trained model** (ConvNeXt-tiny fine-tuned on EyePACS, held-out test AUC 0.909). If the model or the
 > replay changes, rerun `python -m clinicdrift.engine.pipeline` and update every number here from the
-> new `docs/results.md`. Remaining [TBD]s need a decision from the team.
+> new `docs/results.md`.
 
 ## Try it out
 
@@ -209,14 +209,22 @@ sequence: [docs/tiger.md](tiger.md).
 Verified on Tiger Cloud (TimescaleDB 2.31.0) using `python -m clinicdrift.db.tiger ingest --data sample-data`, `compress`, and `check`. The check confirmed 9,500 scan events, 200 weekly monitoring records and 21/21 compressed chunks.
 
 ### Best Use of Vultr
-ClinicDrift runs on a Vultr cloud VM (Ubuntu 24.04), so a clinic lead needs nothing but a browser.
-One VM serves both front ends: the 3D web app (the globe, the clinics week by week, the cost sliders
-that re-decide every alarm, the story and the backtest) and the Streamlit dashboard, which reads the
-monitoring data live from Tiger Cloud. Each is a single script pasted into Vultr's Cloud-Init or run
-over SSH (`deploy/vultr-web.sh`, `deploy/vultr-dashboard.sh`): it clones the repo, builds, installs a
-systemd service and restarts on failure, and running it again updates to the latest commit. The Tiger
-connection string lives only in a root-only environment file on the VM, never in the repo.
-Live: [TBD Sarah: 3D app http://<VM IP>:8080/ and dashboard http://<VM IP>/]
+Vultr was unavailable during the hackathon, so this is our deployment plan, with the scripts ready in
+the repo. ClinicDrift is meant to run on one Vultr cloud VM (Ubuntu 24.04), so a clinic lead needs
+nothing but a browser:
+
+- **The 3D web app** (the globe, the clinics week by week, the cost sliders that re-decide every alarm,
+  the story and the backtest) is a static site: `deploy/vultr-web.sh` builds it and serves it on port
+  8080.
+- **The Streamlit dashboard** runs on port 80 (`deploy/vultr-dashboard.sh`) and reads the monitoring
+  data live from Tiger Cloud, so the same numbers we verified on Tiger reach clinics through Vultr.
+- **One paste to deploy:** both scripts run from Vultr's Cloud-Init User-Data, straight from GitHub.
+  Each clones the repo, builds, installs a systemd service that restarts on failure, and updates to the
+  latest commit when run again. The Tiger connection string lives only in a root-only environment file
+  on the VM, never in the repo.
+- **Next:** one VM per health board, close to its clinics (Vultr's London region for the UK), with the
+  engine's weekly run as a scheduled job on the same machine, so each week's scans are scored, the
+  alarms decided and the dashboards updated without anyone running a command.
 
 ## Data and credits
 
