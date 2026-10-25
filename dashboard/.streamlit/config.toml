@@ -1,4 +1,4 @@
-# Match the web app's colours (web/src/styles/tokens.css) so the two read as one product.
+# Matches the 3D web app's design system (web/MASTER.md); ui/theme.py adds the finer styling.
 [theme]
 base = "dark"
 primaryColor = "#3987e5"
