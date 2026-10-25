@@ -9,6 +9,9 @@ export function StageTools() {
     <>
       <div className="stage-tools">
         <div className="seg" role="group" aria-label="3D view">
+          <button type="button" aria-pressed={mode === "globe"} onClick={() => setState({ mode: "globe", story: null })}>
+            Globe
+          </button>
           <button type="button" aria-pressed={mode === "now"} onClick={() => setState({ mode: "now", story: null })}>
             This week
           </button>
@@ -22,7 +25,7 @@ export function StageTools() {
       </div>
       {!orbited && story === null && (
         <p className="stage-hint" aria-hidden="true">
-          {mode === "now" ? "Drag to turn, scroll to zoom, click a clinic" : "Point at any week; click to open the clinic there"}
+          {mode === "globe" ? "Drag to turn, click a clinic" : mode === "now" ? "Drag to turn, scroll to zoom, click a clinic" : "Point at any week; click to open the clinic there"}
         </p>
       )}
     </>

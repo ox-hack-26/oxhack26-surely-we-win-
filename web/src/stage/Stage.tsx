@@ -8,11 +8,13 @@ import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { getState, reducedMotion, setState, useBundle, useStore, type Mode } from "../store";
 import { ClinicColumn } from "./ClinicColumn";
+import { GLOBE_RADIUS, GlobeView } from "./GlobeView";
 import { HistoryView, ROW_SPACING, WEEK_DEPTH } from "./HistoryView";
 import { COLUMN_HEIGHT as H, SPACING, layout, token } from "./layout";
 import { storyCamera } from "../ui/storySteps";
 
 const HOME = {
+  globe: { target: new THREE.Vector3(0, 0, 0), direction: new THREE.Vector3(0, 0.12, 1).normalize() },
   now: { target: new THREE.Vector3(0, 2.1, 0.2), direction: new THREE.Vector3(0, 0.44, 1).normalize() },
   // Three-quarter view from the front right: week 1 nearest, later weeks running away from you.
   history: { target: new THREE.Vector3(0.4, 1.1, 0.4), direction: new THREE.Vector3(0.38, 0.72, 1).normalize() },
@@ -22,7 +24,9 @@ const HOME = {
 function homeShot(mode: Mode, fov: number, aspect: number, halfWidth: number) {
   const across = Math.tan(((fov * Math.PI) / 180) / 2) * aspect;
   const { target, direction } = HOME[mode];
-  const distance = Math.min(38, Math.max(17, halfWidth / across + (mode === "now" ? 2.6 : 1)));
+  const distance = mode === "globe"
+    ? Math.min(30, Math.max(14, halfWidth / Math.min(across, Math.tan(((fov * Math.PI) / 180) / 2))))
+    : Math.min(38, Math.max(17, halfWidth / across + (mode === "now" ? 2.6 : 1)));
   return { target: target.clone(), position: target.clone().addScaledVector(direction, distance) };
 }
 
@@ -52,7 +56,6 @@ export function Stage() {
           <Lightformer form="rect" intensity={0.6} position={[10, 3, 4]} rotation={[0, -Math.PI / 2, 0]} scale={[12, 3, 1]} />
           <Lightformer form="ring" intensity={0.8} position={[0, 12, 0]} rotation={[Math.PI / 2, 0, 0]} scale={6} />
         </Environment>
-        <Floor />
         <Scene />
       </Canvas>
     </div>
@@ -94,11 +97,14 @@ function Scene() {
   const width = Math.max(...xs) - Math.min(...xs) + SPACING;
   const depth = Math.max(...zs) - Math.min(...zs) + SPACING * 1.2;
   const standard = bundle.settings.min_catch_rate * H;
-  const halfWidth = mode === "now" ? width / 2 + 0.6 : (bundle.clinics.length * ROW_SPACING) / 2 + (bundle.settings.n_weeks * WEEK_DEPTH) / 4;
+  const halfWidth = mode === "globe" ? GLOBE_RADIUS * 1.55 : mode === "now" ? width / 2 + 0.6 : (bundle.clinics.length * ROW_SPACING) / 2 + (bundle.settings.n_weeks * WEEK_DEPTH) / 4;
 
   return (
     <>
-      {mode === "now" ? (
+      {mode !== "globe" && <Floor />}
+      {mode === "globe" ? (
+        <GlobeView />
+      ) : mode === "now" ? (
         <>
           {bundle.clinics.map((clinic) => (
             <ClinicColumn key={clinic.clinic_id} clinic={clinic} position={positions[clinic.clinic_id]} />
@@ -196,7 +202,8 @@ function CameraRig({ positions, halfWidth }: { positions: Record<string, [number
     const { positions, halfWidth, aspect } = latest.current;
     const { selected, story, mode, bundle } = getState();
     // In "All weeks" a clinic opens without moving the camera: the whole replay stays in view.
-    const shot = story !== null ? storyCamera(story, bundle) : mode === "now" ? selected : null;
+    // On the globe the camera stays put: the sphere turns the clinic to face you instead.
+    const shot = mode === "globe" ? null : story !== null ? storyCamera(story, bundle) : mode === "now" ? selected : null;
     const across = Math.tan(((camera.fov * Math.PI) / 180) / 2) * aspect; // half the visible width per unit of distance
     let { position, target } = homeShot(mode, camera.fov, aspect, halfWidth);
     if (shot === "back") {

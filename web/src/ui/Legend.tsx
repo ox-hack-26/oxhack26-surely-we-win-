@@ -8,7 +8,29 @@ export function Legend() {
   return (
     <details className="legend panel" open>
       <summary className="label">How to read it</summary>
-      {mode === "now" ? (
+      {mode === "globe" ? (
+        <ul>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+              <circle cx="9" cy="9" r="3.5" className="fill--ink" />
+            </svg>
+            Dot: a clinic; click it to open
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+              <path d="M2 14 Q9 1 16 14" fill="none" className="stroke--drift" strokeWidth="1.6" />
+            </svg>
+            Aqua arc: drift from the validation site, brighter when scans look unfamiliar
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+              <circle cx="9" cy="9" r="4" className="fill--alarm" />
+            </svg>
+            Red glow: alarm, pull the AI for review
+          </li>
+          <li className="legend__note">Locations are illustrative.</li>
+        </ul>
+      ) : mode === "now" ? (
         <ul>
           <li>
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">

@@ -55,6 +55,7 @@ img { display: block; max-width: 100%; }
 .stroke--drift { stroke: var(--drift); }
 .stroke--belief { stroke: var(--belief); }
 .stroke--ink { stroke: var(--ink-2); }
+.fill--ink { fill: var(--ink); }
 
 /* ---------- Buttons and controls (five states each) ---------- */
 .btn {
@@ -205,6 +206,7 @@ img { display: block; max-width: 100%; }
 .legend li { display: flex; align-items: center; gap: var(--s-2); font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--ink-2); }
 .legend li svg { flex: none; }
 .legend li.is-off { opacity: 0.55; }
+.legend li.legend__note { color: var(--muted); padding-top: var(--s-1); }
 
 .tooltip {
   pointer-events: none; z-index: var(--z-tooltip);

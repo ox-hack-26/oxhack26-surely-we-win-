@@ -7,7 +7,7 @@ import { Legend } from "./ui/Legend";
 import { Rail } from "./ui/Rail";
 import { Results } from "./ui/Results";
 import { StageTools } from "./ui/StageTools";
-import { StoryCard } from "./ui/Story";
+import { goToStep, StoryCard } from "./ui/Story";
 import { Timeline } from "./ui/Timeline";
 import { TopBar } from "./ui/TopBar";
 
@@ -21,7 +21,7 @@ function fromUrl(bundle: Bundle): Partial<State> {
     ...(clinic && bundle.clinics.some((c) => c.clinic_id === clinic) ? { selected: clinic } : {}),
     ...(q.get("hindsight") === "1" ? { hindsight: true } : {}),
     ...(q.get("view") === "results" ? { view: "results" as const } : {}),
-    ...(q.get("mode") === "history" ? { mode: "history" as const } : {}),
+    ...(q.get("mode") === "history" || q.get("mode") === "now" || q.get("mode") === "globe" ? { mode: q.get("mode") as State["mode"] } : {}),
   };
 }
 
@@ -36,7 +36,12 @@ export function App() {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json() as Promise<Bundle>;
       })
-      .then((b) => setState({ bundle: b, costs: defaultCosts(b), ...fromUrl(b) }))
+      .then((b) => {
+        setState({ bundle: b, costs: defaultCosts(b), ...fromUrl(b) });
+        // ?story=2 opens the guided story at its second step.
+        const step = Number(new URLSearchParams(window.location.search).get("story"));
+        if (step >= 1) goToStep(step - 1);
+      })
       .catch((e: Error) => setError(`Could not load the data (${e.message}). Run scripts/export_web.py, then reload.`));
   }, []);
 
