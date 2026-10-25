@@ -15,7 +15,7 @@ export function goToStep(index: number | null): void {
     week: step.week,
     hindsight: step.hindsight,
     view: step.view,
-    mode: "now",
+    mode: step.mode,
     selected: null,
     hovered: null,
     playing: false,

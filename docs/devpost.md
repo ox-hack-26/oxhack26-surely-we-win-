@@ -20,7 +20,7 @@ python -m venv .venv
 pip install -r requirements-addons.txt
 python -m addons.run_demo --clinic US-WEAR-01 --replay   # the worn-camera alarm
 python -m addons.run_demo --all --replay                 # all 8 alarms
-python -m pytest -q tests                                # 67 offline tests
+python -m pytest -q tests                                # 58 offline tests
 ```
 
 Each run prints the likely cause and a short alert script, and writes the cause and the draft

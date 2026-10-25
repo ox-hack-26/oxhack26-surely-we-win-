@@ -58,9 +58,6 @@ Have `addons/out/US-WEAR-01_week9_incident_report.md` open in a second window to
 > and writes a short alert for the clinic lead: notice it says the catch rate can't be verified rather than
 > quoting a number it can't know.
 
-Optional, only if the Arduino has been tested on this laptop beforehand: add `--light` and point at
-the board's LED as it switches to the fast ALARM blink.
-
 ## Slide 6: Honest limits and next steps (20 s)
 
 > This is a stand-in model on real public scans, but the clinics, camera wear and the update are
@@ -71,7 +68,6 @@ the board's LED as it switches to the fast ALARM blink.
 ## Before you present
 
 - [ ] `git pull` dev, then check that the slide numbers match `docs/results.md`
-- [ ] Only if using the light: Arduino uploaded, Serial Monitor closed, replay tested on this laptop
 - [ ] `run_demo --replay` rehearsed (no wifi or quota needed)
 - [ ] Each chart opens full screen (they're 1920×1080)
 

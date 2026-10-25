@@ -8,7 +8,35 @@ export function Legend() {
   return (
     <details className="legend panel" open>
       <summary className="label">How to read it</summary>
-      {mode === "now" ? (
+      {mode === "world" ? (
+        <>
+          <p className="legend__lead">One eye-screening AI, validated in California, used at ten clinics. ClinicDrift predicts where it is quietly failing, weeks before the expert grades arrive.</p>
+          <ul>
+            <li>
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                <circle cx="5" cy="14" r="2.5" className="fill--ink" />
+                <path d="M5 14 V4 H9" fill="none" className="stroke--ink" strokeWidth="1" />
+                <rect x="9" y="1.5" width="8" height="5" rx="1" fill="none" className="stroke--ink" strokeWidth="1" />
+              </svg>
+              Pin and callout: clinic, and the catch rate ClinicDrift believes
+            </li>
+            <li>
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                <path d="M2 14 Q 9 1 16 12" fill="none" className="stroke--drift" strokeWidth="1.6" />
+              </svg>
+              Aqua ring and line home: drift from the validated scans
+            </li>
+            <li>
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                <circle cx="9" cy="9" r="2.5" className="fill--alarm" />
+                <circle cx="9" cy="9" r="6" fill="none" className="stroke--alarm" strokeWidth="1" />
+              </svg>
+              Red land and ripples: alarm, pull the AI for review
+            </li>
+            <li className="is-off">Clinics are simulated; places are illustrative</li>
+          </ul>
+        </>
+      ) : mode === "now" ? (
         <ul>
           <li>
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">

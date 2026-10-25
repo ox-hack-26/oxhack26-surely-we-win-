@@ -27,6 +27,8 @@
   /* Type */
   --font-sans: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+  --text-micro: 11px;
+  --lh-micro: 13px;
   --text-caption: 12px;
   --lh-caption: 16px;
   --text-label: 13px;

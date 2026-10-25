@@ -5,10 +5,14 @@ export function StageTools() {
   const mode = useStore((s) => s.mode);
   const orbited = useStore((s) => s.orbited);
   const story = useStore((s) => s.story);
+  const playing = useStore((s) => s.playing);
   return (
     <>
       <div className="stage-tools">
         <div className="seg" role="group" aria-label="3D view">
+          <button type="button" aria-pressed={mode === "world"} onClick={() => setState({ mode: "world", story: null })}>
+            World
+          </button>
           <button type="button" aria-pressed={mode === "now"} onClick={() => setState({ mode: "now", story: null })}>
             This week
           </button>
@@ -20,9 +24,9 @@ export function StageTools() {
           Reset view
         </button>
       </div>
-      {!orbited && story === null && (
+      {!orbited && !playing && story === null && (
         <p className="stage-hint" aria-hidden="true">
-          {mode === "now" ? "Drag to turn, scroll to zoom, click a clinic" : "Point at any week; click to open the clinic there"}
+          {mode === "history" ? "Point at any week; click to open the clinic there" : mode === "world" ? "Press Play, drag to turn, click a clinic" : "Press Play, drag to turn, click a clinic"}
         </p>
       )}
     </>

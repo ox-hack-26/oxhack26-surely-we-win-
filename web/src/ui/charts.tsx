@@ -129,7 +129,7 @@ export function CatchChart({ clinic, week, hindsight, decision }: ChartProps) {
               {hindsight && clinic.changed_week && clinic.changed_week <= n && (
                 <g>
                   <rect x={x(clinic.changed_week) - 6} y={M.top} width={Math.max(0, x(n) - x(clinic.changed_week) + 6)} height={height - M.top - M.bottom} className="chart__changed" />
-                  <text x={x(clinic.changed_week) - 2} y={M.top + 12} className="chart__note">
+                  <text x={x(clinic.changed_week) + 2} y={height - M.bottom - 6} className="chart__note">
                     Conditions changed
                   </text>
                 </g>

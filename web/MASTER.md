@@ -56,6 +56,7 @@ The four data colours pass the colour-blind validator on `#1a1a19` (worst adjace
 
 | Token | Size / line | Use |
 |---|---|---|
+| `--text-micro` | 11 / 13 | clinic codes under the World bars only |
 | `--text-caption` | 12 / 16 | axis ticks, footnotes |
 | `--text-label` | 13 / 17, 500, uppercase, 0.06em | field labels |
 | `--text-body` | 15 / 23 | running text |
