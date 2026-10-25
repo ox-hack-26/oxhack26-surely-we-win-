@@ -386,6 +386,16 @@ input[type="range"]:disabled { opacity: 0.4; cursor: default; }
 .alarm-card__numbers { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4); }
 .alarm-card__numbers .caption { margin-top: var(--s-1); }
 
+.gemini-card { border: 1px solid var(--hairline); border-left: 2px solid var(--belief); border-radius: var(--r); background: var(--panel-2); padding: var(--s-4) var(--s-5); display: grid; gap: var(--s-3); }
+.gemini-card p { color: var(--ink-2); }
+.gemini-card__head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
+.gemini-card__title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); font-weight: 600; font-size: var(--text-title); }
+.gemini-card .tag { font-size: var(--text-micro); line-height: var(--lh-micro); letter-spacing: 0.06em; text-transform: uppercase; color: var(--estimate); border: 1px solid var(--estimate); border-radius: var(--r); padding: 2px var(--s-2); }
+.gemini-card .pill { font-size: var(--text-caption); font-weight: 500; color: var(--belief); border: 1px solid var(--hairline-strong); border-radius: 999px; padding: 1px var(--s-2); }
+.gemini-card__list { margin: var(--s-1) 0 0; padding-left: var(--s-5); display: grid; gap: var(--s-1); font-size: var(--text-label); line-height: var(--lh-label); color: var(--ink-2); }
+.gemini-card__report summary { cursor: pointer; font-size: var(--text-label); font-weight: 500; color: var(--ink); }
+.gemini-card__report pre { margin-top: var(--s-2); max-height: 320px; overflow: auto; white-space: pre-wrap; font-family: var(--font-mono); font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--ink-2); background: var(--ground); border-radius: var(--r); padding: var(--s-3); }
+
 .chart { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-2); min-width: 0; }
 .chart__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-2) var(--s-4); }
 .chart__legend { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); font-size: var(--text-caption); color: var(--ink-2); }
