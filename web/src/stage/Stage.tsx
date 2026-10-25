@@ -16,7 +16,7 @@ import { WorldView } from "./WorldView";
 
 const HOME = {
   // The globe sits a little left and low, clear of the legend and the catch-rate bars above it.
-  world: { target: new THREE.Vector3(2.5, 2.1, 0), direction: new THREE.Vector3(0, 0.12, 1).normalize() },
+  world: { target: new THREE.Vector3(2.5, 1.8, 0), direction: new THREE.Vector3(0, 0.12, 1).normalize() },
   now: { target: new THREE.Vector3(0, 2.1, 0.2), direction: new THREE.Vector3(0, 0.44, 1).normalize() },
   // Three-quarter view from the front right: week 1 nearest, later weeks running away from you.
   history: { target: new THREE.Vector3(0.4, 1.1, 0.4), direction: new THREE.Vector3(0.38, 0.72, 1).normalize() },
@@ -27,7 +27,7 @@ function homeShot(mode: Mode, fov: number, aspect: number, halfWidth: number) {
   const across = Math.tan(((fov * Math.PI) / 180) / 2) * aspect;
   const { target, direction } = HOME[mode];
   const distance =
-    mode === "world" ? Math.min(36, Math.max(25, halfWidth / across + 3)) : Math.min(38, Math.max(17, halfWidth / across + (mode === "now" ? 2.6 : 1)));
+    mode === "world" ? Math.min(36, Math.max(20.3, halfWidth / across + 3)) : Math.min(38, Math.max(17, halfWidth / across + (mode === "now" ? 2.6 : 1)));
   return { target: target.clone(), position: target.clone().addScaledVector(direction, distance) };
 }
 
@@ -139,6 +139,9 @@ function Scene() {
         enableDamping
         dampingFactor={0.08}
         enablePan={false}
+        // The globe is locked: it turns itself, so the camera neither zooms nor orbits there.
+        enableZoom={mode !== "world"}
+        enableRotate={mode !== "world"}
         minDistance={mode === "world" ? 10 : 6}
         maxDistance={mode === "world" ? 36 : 34}
         minPolarAngle={mode === "world" ? 0.15 : 0.25}

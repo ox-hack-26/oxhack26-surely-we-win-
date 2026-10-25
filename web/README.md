@@ -20,6 +20,7 @@ python scripts/export_web.py
 
 ## What is on screen
 
+- **World** (the opening view). The clinics on a globe, each a pin with a callout of its catch rate; lines run back to where the AI was validated and brighten with drift; an alarm turns the land around a clinic red. There is no zoom; drag to turn the globe. Otherwise it turns slowly by itself, swings to new alarms while the replay plays, and holds still while you point at a clinic. Bars beside it show every clinic's catch rate for the week.
 - **Clinics.** Each column is a clinic. Height is the catch rate ClinicDrift believes this week, the sleeve its 90% band, the amber ring the AI's own estimate, the aqua halo on the floor drift, and a red beacon an alarm. The flat plane is the 80% screening standard.
 - **All weeks** (top right of the 3D view) lays every clinic's whole replay out as a ribbon: week 1 nearest you, an upright sheet for "now" that moves away as the replay plays. Point at any week for its numbers; click to open the clinic at that week. **Reset view** flies the camera home after you have turned it.
 - **Hindsight** shows the real catch rate (orange), which in real life nobody sees until the expert grades arrive weeks later.

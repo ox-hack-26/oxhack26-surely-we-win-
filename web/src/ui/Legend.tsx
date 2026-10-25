@@ -14,9 +14,11 @@ export function Legend() {
           <ul>
             <li>
               <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-                <rect x="7.5" y="3" width="3" height="12" rx="1" className="fill--belief" />
+                <circle cx="5" cy="14" r="2.5" className="fill--ink" />
+                <path d="M5 14 V4 H9" fill="none" className="stroke--ink" strokeWidth="1" />
+                <rect x="9" y="1.5" width="8" height="5" rx="1" fill="none" className="stroke--ink" strokeWidth="1" />
               </svg>
-              Column: catch rate ClinicDrift believes
+              Pin and callout: clinic, and the catch rate ClinicDrift believes
             </li>
             <li>
               <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
@@ -26,9 +28,10 @@ export function Legend() {
             </li>
             <li>
               <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-                <circle cx="9" cy="9" r="4" className="fill--alarm" />
+                <circle cx="9" cy="9" r="2.5" className="fill--alarm" />
+                <circle cx="9" cy="9" r="6" fill="none" className="stroke--alarm" strokeWidth="1" />
               </svg>
-              Red light: alarm, pull the AI for review
+              Red land and ripples: alarm, pull the AI for review
             </li>
             <li className="is-off">Clinics are simulated; places are illustrative</li>
           </ul>

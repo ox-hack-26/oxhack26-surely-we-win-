@@ -1,26 +1,29 @@
 // "World": the opening view. One eye-screening AI, validated in California, used at ten clinics
-// around the world. Each clinic is a small column standing on the globe (its height the catch rate
+// around the world. Each clinic is a pin on the globe with a callout (its code and the catch rate
 // ClinicDrift believes), ringed in aqua by drift, with a line back to where the AI was validated
-// that brightens as the clinic's scans drift away. Alarms glow red. While the replay plays, the
-// globe turns to wherever the next alarm fires; it never turns on its own otherwise.
+// that brightens as its scans drift away. An alarm turns the land around the clinic red and sends
+// out thin ripples. The camera is fixed (no zoom); dragging turns the globe, which otherwise turns
+// slowly on its own, swings to the next alarm while the replay plays, and holds still while
+// someone points at a clinic.
 import { Html } from "@react-three/drei";
-import { useFrame, type ThreeEvent } from "@react-three/fiber";
+import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import gsap from "gsap";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import type { Clinic } from "../data/types";
-import { pct, num, REASON_LABEL } from "../format";
-import { reducedMotion, setState, useBundle, useDecisions, useStore } from "../store";
+import { num, pct, REASON_LABEL } from "../format";
+import { getState, reducedMotion, setState, useBundle, useDecisions, useStore } from "../store";
 import { storySteps } from "../ui/storySteps";
-import { easeInOutCubic, glowTexture, token } from "./layout";
+import { easeInOutCubic, token } from "./layout";
 import { faceTurn, GLOBE_SHOTS, latLonToVector, placeOf, VALIDATION } from "./places";
 
 export const GLOBE_RADIUS = 4;
 const R = GLOBE_RADIUS;
-const MARKER_HEIGHT = 1.0; // world units for a 100% catch rate
 const DATA_SECONDS = 0.6;
 const UI_SECONDS = 0.2;
 const PULSE_SECONDS = 2.4;
+const IDLE_SPIN = 0.045; // radians a second: one turn in about two and a half minutes
+const ALARM_REACH = (9 * Math.PI) / 180; // land within 9 degrees of an alarmed clinic turns red
 const UP = new THREE.Vector3(0, 1, 0);
 
 let dot: THREE.Texture | null = null;
@@ -42,7 +45,72 @@ export function WorldView() {
   const bundle = useBundle();
   const spin = useRef<THREE.Group>(null);
   const tilt = useRef<THREE.Group>(null);
-  const [land, setLand] = useState<Float32Array | null>(null);
+  const validation = useMemo(() => latLonToVector(VALIDATION.lat, VALIDATION.lon, R), []);
+  const ink = token("--ink");
+
+  return (
+    <group ref={tilt}>
+      <group ref={spin}>
+        {/* The globe: an opaque dark ball. It also stops pointing from reaching pins behind it. */}
+        <mesh onPointerMove={(e) => e.stopPropagation()} onPointerOver={(e) => e.stopPropagation()}>
+          <sphereGeometry args={[R, 96, 64]} />
+          <meshStandardMaterial color={token("--panel")} roughness={0.8} metalness={0.15} envMapIntensity={0.45} />
+        </mesh>
+        <Graticule />
+        <Land />
+        <Rim />
+
+        {/* Where the AI was validated. */}
+        <group position={validation} quaternion={new THREE.Quaternion().setFromUnitVectors(UP, validation.clone().normalize())}>
+          <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.1, 0.135, 48]} />
+            <meshBasicMaterial color={ink} />
+          </mesh>
+          <mesh position={[0, 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.04, 24]} />
+            <meshBasicMaterial color={ink} />
+          </mesh>
+          <Callout height={0.9} priority={1} className="callout callout--home">
+            <span className="callout__id">Validated here</span>
+            <span className="callout__sub">{VALIDATION.city}</span>
+          </Callout>
+        </group>
+
+        {bundle.clinics.map((clinic, i) => (
+          <WorldClinic key={clinic.clinic_id} clinic={clinic} validation={validation} stem={0.45 + (i % 3) * 0.32} />
+        ))}
+      </group>
+      <GlobeRig spin={spin} tilt={tilt} />
+      <Declutter />
+    </group>
+  );
+}
+
+/** Faint lines of latitude and longitude every 30 degrees: the globe reads as an instrument. */
+function Graticule() {
+  const geometry = useMemo(() => {
+    const pts: THREE.Vector3[] = [];
+    const r = R * 1.001;
+    for (let lat = -60; lat <= 60; lat += 30)
+      for (let lon = -180; lon < 180; lon += 3) pts.push(latLonToVector(lat, lon, r), latLonToVector(lat, lon + 3, r));
+    for (let lon = -180; lon < 180; lon += 30)
+      for (let lat = -84; lat < 84; lat += 3) pts.push(latLonToVector(lat, lon, r), latLonToVector(lat + 3, lon, r));
+    return new THREE.BufferGeometry().setFromPoints(pts);
+  }, []);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  return (
+    <lineSegments geometry={geometry}>
+      <lineBasicMaterial color={token("--ink")} transparent opacity={0.07} depthWrite={false} />
+    </lineSegments>
+  );
+}
+
+/** The continents in dots. Dots near a clinic on alarm turn red, so the trouble reads as a place. */
+function Land() {
+  const bundle = useBundle();
+  const week = useStore((s) => s.week);
+  const decisions = useDecisions();
+  const [land, setLand] = useState<{ pos: Float32Array; unit: Float32Array } | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -50,12 +118,15 @@ export function WorldView() {
       .then((r) => r.json() as Promise<number[]>)
       .then((pairs) => {
         if (!live) return;
-        const pos = new Float32Array((pairs.length / 2) * 3);
-        for (let i = 0; i < pairs.length; i += 2) {
-          const v = latLonToVector(pairs[i], pairs[i + 1], R * 1.002);
-          pos.set([v.x, v.y, v.z], (i / 2) * 3);
+        const n = pairs.length / 2;
+        const pos = new Float32Array(n * 3);
+        const unit = new Float32Array(n * 3);
+        for (let i = 0; i < n; i++) {
+          const v = latLonToVector(pairs[2 * i], pairs[2 * i + 1], 1);
+          unit.set([v.x, v.y, v.z], i * 3);
+          pos.set([v.x * R * 1.002, v.y * R * 1.002, v.z * R * 1.002], i * 3);
         }
-        setLand(pos);
+        setLand({ pos, unit });
       })
       .catch(() => undefined); // the globe still works without its map
     return () => {
@@ -63,46 +134,48 @@ export function WorldView() {
     };
   }, []);
 
-  const ink = token("--ink");
-  const validation = useMemo(() => latLonToVector(VALIDATION.lat, VALIDATION.lon, R), []);
+  // Which places are on alarm this week, recomputed only when that set changes.
+  const alarmed = bundle.clinics
+    .filter((c) => decisions[c.clinic_id]?.weeks[week - 1]?.alarm)
+    .map((c) => c.clinic_id)
+    .join(",");
+  // The land within reach of an alarmed clinic, drawn again on top in red, slightly larger.
+  const hot = useMemo(() => {
+    if (!land || !alarmed) return null;
+    const centres = alarmed.split(",").map((id) => {
+      const c = bundle.clinics.find((k) => k.clinic_id === id)!;
+      const p = placeOf(c.clinic_id, c.country);
+      return latLonToVector(p.lat, p.lon, 1);
+    });
+    const cosReach = Math.cos(ALARM_REACH);
+    const out: number[] = [];
+    for (let i = 0; i < land.unit.length / 3; i++) {
+      const x = land.unit[3 * i];
+      const y = land.unit[3 * i + 1];
+      const z = land.unit[3 * i + 2];
+      if (centres.some((k) => x * k.x + y * k.y + z * k.z > cosReach)) out.push(x * R * 1.003, y * R * 1.003, z * R * 1.003);
+    }
+    return new Float32Array(out);
+  }, [land, alarmed, bundle]);
 
+  if (!land) return null;
   return (
-    <group ref={tilt}>
-      <group ref={spin}>
-        {/* The globe: an opaque dark ball. It also stops pointing from reaching markers behind it. */}
-        <mesh onPointerMove={(e) => e.stopPropagation()} onPointerOver={(e) => e.stopPropagation()}>
-          <sphereGeometry args={[R, 96, 64]} />
-          <meshStandardMaterial color={token("--panel")} roughness={0.8} metalness={0.15} envMapIntensity={0.45} />
-        </mesh>
-        {land && (
-          <points>
-            <bufferGeometry>
-              <bufferAttribute attach="attributes-position" args={[land, 3]} />
-            </bufferGeometry>
-            <pointsMaterial map={dotTexture()} color={token("--ink-2")} size={0.15} sizeAttenuation transparent opacity={0.5} alphaTest={0.3} depthWrite={false} />
-          </points>
-        )}
-
-        <Rim />
-
-        {/* Where the AI was validated. */}
-        <group position={validation} quaternion={new THREE.Quaternion().setFromUnitVectors(UP, validation.clone().normalize())}>
-          <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.12, 0.17, 40]} />
-            <meshBasicMaterial color={ink} />
-          </mesh>
-          <FacingLabel className="globe-label globe-label--home">
-            Validated here
-            <span className="globe-label__city">{VALIDATION.city}</span>
-          </FacingLabel>
-        </group>
-
-        {bundle.clinics.map((clinic) => (
-          <WorldClinic key={clinic.clinic_id} clinic={clinic} validation={validation} />
-        ))}
-      </group>
-      <GlobeRig spin={spin} tilt={tilt} />
-    </group>
+    <>
+      <points>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[land.pos, 3]} />
+        </bufferGeometry>
+        <pointsMaterial map={dotTexture()} color={token("--ink-2")} size={0.15} sizeAttenuation transparent opacity={0.55} alphaTest={0.3} depthWrite={false} />
+      </points>
+      {hot && hot.length > 0 && (
+        <points key={alarmed}>
+          <bufferGeometry>
+            <bufferAttribute attach="attributes-position" args={[hot, 3]} />
+          </bufferGeometry>
+          <pointsMaterial map={dotTexture()} color={token("--alarm")} size={0.19} sizeAttenuation transparent opacity={0.95} alphaTest={0.3} depthWrite={false} />
+        </points>
+      )}
+    </>
   );
 }
 
@@ -119,7 +192,6 @@ function Rim() {
           void main() { float edge = 1.0 - abs(dot(vNormal, vView)); gl_FragColor = vec4(colour, pow(edge, 3.0) * 0.55); }`,
         transparent: true,
         depthWrite: false,
-        side: THREE.FrontSide,
       }),
     [],
   );
@@ -131,7 +203,8 @@ function Rim() {
   );
 }
 
-/** Turns the globe: to the story's shot, the opened clinic, or (while playing) the next alarm. */
+/** Turns the globe: to the story's shot, the opened clinic, or (while playing) the next alarm.
+ *  Otherwise it turns slowly on its own, and holds still while someone points at a clinic. */
 function GlobeRig({ spin, tilt }: { spin: React.RefObject<THREE.Group>; tilt: React.RefObject<THREE.Group> }) {
   const bundle = useBundle();
   const decisions = useDecisions();
@@ -141,6 +214,45 @@ function GlobeRig({ spin, tilt }: { spin: React.RefObject<THREE.Group>; tilt: Re
   const story = useStore((s) => s.story);
   const turn = useRef({ spin: faceTurn(GLOBE_SHOTS.americas.lat, GLOBE_SHOTS.americas.lon).spin, tilt: 0.35 });
   const placed = useRef(false);
+  const tween = useRef<gsap.core.Tween | null>(null);
+  const still = useMemo(() => reducedMotion(), []);
+  const gl = useThree((s) => s.gl);
+  // Dragging turns the globe itself (the camera stays put, and there is no zoom). The slow
+  // idle turn waits a few seconds after a drag before it resumes.
+  const drag = useRef<{ x: number; y: number } | null>(null);
+  const lastDrag = useRef(0);
+  useEffect(() => {
+    const el = gl.domElement;
+    el.style.cursor = "grab";
+    const down = (e: PointerEvent) => {
+      drag.current = { x: e.clientX, y: e.clientY };
+      tween.current?.kill();
+      el.style.cursor = "grabbing";
+    };
+    const move = (e: PointerEvent) => {
+      if (!drag.current) return;
+      const dx = e.clientX - drag.current.x;
+      const dy = e.clientY - drag.current.y;
+      drag.current = { x: e.clientX, y: e.clientY };
+      turn.current.spin += dx * 0.006;
+      turn.current.tilt = Math.max(-0.9, Math.min(1.1, turn.current.tilt + dy * 0.004));
+      lastDrag.current = performance.now();
+      if (Math.abs(dx) + Math.abs(dy) > 2 && !getState().orbited) setState({ orbited: true });
+    };
+    const up = () => {
+      drag.current = null;
+      el.style.cursor = "grab";
+    };
+    el.addEventListener("pointerdown", down);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => {
+      el.style.cursor = "";
+      el.removeEventListener("pointerdown", down);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+  }, [gl]);
 
   useEffect(() => {
     let to: { lat: number; lon: number } | null = null;
@@ -165,13 +277,18 @@ function GlobeRig({ spin, tilt }: { spin: React.RefObject<THREE.Group>; tilt: Re
     while (target - now > Math.PI) target -= 2 * Math.PI;
     while (target - now < -Math.PI) target += 2 * Math.PI;
     const tiltTo = Math.max(-0.2, Math.min(0.75, goal.tilt * 0.75));
-    const seconds = !placed.current || reducedMotion() ? 0 : 1.2;
+    const seconds = !placed.current || still ? 0 : 1.2;
     placed.current = true;
-    const tw = gsap.to(turn.current, { spin: target, tilt: tiltTo, duration: seconds, ease: "power3.inOut" });
-    return () => void tw.kill();
-  }, [bundle, decisions, week, playing, selected, story]);
+    tween.current?.kill();
+    tween.current = gsap.to(turn.current, { spin: target, tilt: tiltTo, duration: seconds, ease: "power3.inOut" });
+  }, [bundle, decisions, week, playing, selected, story, still]);
+  useEffect(() => () => void tween.current?.kill(), []);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
+    const { hovered, selected: open, story: telling, playing: running } = getState();
+    const resting = !drag.current && performance.now() - lastDrag.current > 3000;
+    const idle = resting && !still && !hovered && !open && telling === null && !running && !tween.current?.isActive();
+    if (idle) turn.current.spin += IDLE_SPIN * Math.min(delta, 0.1);
     if (spin.current) spin.current.rotation.y = turn.current.spin;
     if (tilt.current) tilt.current.rotation.x = turn.current.tilt;
   });
@@ -179,30 +296,119 @@ function GlobeRig({ spin, tilt }: { spin: React.RefObject<THREE.Group>; tilt: Re
   return null;
 }
 
-/** A label that fades out when its point turns to the far side of the globe. */
-function FacingLabel({ className, children }: { className: string; children: React.ReactNode }) {
+interface CalloutEntry {
+  el: HTMLDivElement;
+  x: number; // screen position of the line's tip, in CSS pixels
+  y: number;
+  visible: boolean;
+  priority: number; // alarms and focus win the free space
+}
+const callouts = new Set<CalloutEntry>();
+
+/** Slides overlapping callouts apart vertically, highest priority first. It works from the
+ *  positions the callouts reported last frame, a lag nobody can see. */
+function Declutter() {
+  useFrame(({ gl }) => {
+    // The panels over the stage count as taken space, so callouts steer clear of them.
+    const stage = gl.domElement.getBoundingClientRect();
+    const placed: { l: number; r: number; t: number; b: number }[] = [...document.querySelectorAll(".world-bars, .legend, .story")].map((el) => {
+      const r = el.getBoundingClientRect();
+      return { l: r.left - stage.left - 4, r: r.right - stage.left + 4, t: r.top - stage.top - 4, b: r.bottom - stage.top + 4 };
+    });
+    const list = [...callouts].filter((c) => c.visible).sort((a, b) => b.priority - a.priority || a.y - b.y);
+    for (const c of list) {
+      const w = c.el.offsetWidth;
+      const h = c.el.offsetHeight + 4;
+      const l = c.el.dataset.side === "left" ? c.x - 6 - w : c.x + 6;
+      let dy = 0;
+      for (const step of [0, 1, -1, 2, -2, 3, -3, 4, -4]) {
+        const t = c.y - h / 2 + step * h;
+        if (!placed.some((p) => l < p.r && l + w > p.l && t < p.b && t + h > p.t)) {
+          dy = step * h;
+          break;
+        }
+      }
+      placed.push({ l, r: l + w, t: c.y - h / 2 + dy, b: c.y + h / 2 + dy });
+      c.el.style.setProperty("--dy", `${dy}px`);
+    }
+  });
+  return null;
+}
+
+/** A label on a thin leader line, standing off the globe's surface. It fades when its point
+ *  turns to the far side, and sits on whichever side of the line points away from the globe. */
+function Callout({ height, side, priority = 0, className, children }: { height: number; side?: "left" | "right"; priority?: number; className: string; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
-  const group = useRef<THREE.Group>(null);
+  const tip = useRef<THREE.Group>(null);
+  const base = useRef<THREE.Group>(null);
+  const line = useMemo(() => {
+    const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0.02, 0), new THREE.Vector3(0, height, 0)]);
+    return new THREE.Line(g, new THREE.LineBasicMaterial({ color: token("--ink-2"), transparent: true, opacity: 0.55, depthWrite: false }));
+  }, [height]);
+  useEffect(
+    () => () => {
+      line.geometry.dispose();
+      (line.material as THREE.Material).dispose();
+    },
+    [line],
+  );
   const p = useMemo(() => new THREE.Vector3(), []);
-  useFrame(({ camera }) => {
-    if (!group.current || !ref.current) return;
-    group.current.getWorldPosition(p);
-    const facing = p.clone().normalize().dot(camera.position.clone().sub(p).normalize());
-    const visible = facing > 0.15;
+  const q = useMemo(() => new THREE.Vector3(), []);
+  const n = useMemo(() => new THREE.Vector3(), []);
+  const centre = useMemo(() => new THREE.Vector3(), []);
+  // Html renders its children in a root of its own, so the element appears a frame or two after
+  // mount: the callout joins the declutter list from the render loop once it exists.
+  const entry = useRef<CalloutEntry | null>(null);
+  useEffect(
+    () => () => {
+      if (entry.current) callouts.delete(entry.current);
+    },
+    [],
+  );
+  useFrame(({ camera, size }) => {
+    if (!base.current || !tip.current || !ref.current) return;
+    if (!entry.current || entry.current.el !== ref.current) {
+      if (entry.current) callouts.delete(entry.current);
+      entry.current = { el: ref.current, x: 0, y: 0, visible: false, priority };
+      callouts.add(entry.current);
+    }
+    entry.current.priority = priority;
+    base.current.getWorldPosition(p);
+    const facing = n.copy(p).normalize().dot(q.copy(camera.position).sub(p).normalize());
+    const visible = facing > 0.3;
     ref.current.style.opacity = visible ? "1" : "0";
+    (line.material as THREE.LineBasicMaterial).opacity = visible ? 0.55 : 0;
+    // Left or right of the line: away from the globe's centre on screen.
+    tip.current.getWorldPosition(q).project(camera);
+    let onLeft = side ? side === "left" : q.x < centre.set(0, 0, 0).project(camera).x;
+    const sx = ((q.x + 1) / 2) * size.width;
+    const sy = ((1 - q.y) / 2) * size.height;
+    // Never off the stage: flip sides when the card would run past an edge.
+    const w = ref.current.offsetWidth + 10;
+    if (onLeft && sx - w < 0) onLeft = false;
+    else if (!onLeft && sx + w > size.width) onLeft = true;
+    ref.current.dataset.side = onLeft ? "left" : "right";
+    if (entry.current) {
+      entry.current.x = sx;
+      entry.current.y = sy;
+      entry.current.visible = visible;
+    }
   });
   return (
-    <group ref={group}>
-      <Html center zIndexRange={[5, 0]} className="stage-label">
-        <div ref={ref} className={className}>
-          {children}
-        </div>
-      </Html>
+    <group ref={base}>
+      <primitive object={line} />
+      <group ref={tip} position={[0, height, 0]}>
+        <Html zIndexRange={[6, 0]} className="callout-anchor">
+          <div ref={ref} className={className} data-side="right">
+            {children}
+          </div>
+        </Html>
+      </group>
     </group>
   );
 }
 
-function WorldClinic({ clinic, validation }: { clinic: Clinic; validation: THREE.Vector3 }) {
+function WorldClinic({ clinic, validation, stem }: { clinic: Clinic; validation: THREE.Vector3; stem: number }) {
   const week = useStore((s) => s.week);
   const hovered = useStore((s) => s.hovered === clinic.clinic_id);
   const selected = useStore((s) => s.selected === clinic.clinic_id);
@@ -239,19 +445,14 @@ function WorldClinic({ clinic, validation }: { clinic: Clinic; validation: THREE
 
   const colours = useMemo(
     () => ({
-      belief: new THREE.Color(token("--belief")),
-      drift: new THREE.Color(token("--drift")),
-      alarm: new THREE.Color(token("--alarm")).multiplyScalar(1.15),
-      alarmFlat: new THREE.Color(token("--alarm")),
       ink: new THREE.Color(token("--ink")),
-      recede: new THREE.Color(token("--panel")),
+      alarm: new THREE.Color(token("--alarm")),
     }),
     [],
   );
 
   // Tweens: data 600ms ease-in-out, focus 200ms ease-out.
   const target = {
-    belief: w.catch_rate,
     drift: Math.min(1, Math.max(0, (w.drift_auc - 0.5) / 0.5)),
     alarm: alarm ? 1 : 0,
     dim: dimmed ? 1 : 0,
@@ -261,7 +462,7 @@ function WorldClinic({ clinic, validation }: { clinic: Clinic; validation: THREE
   const cur = useRef({ ...target });
   const from = useRef({ ...target });
   const to = useRef({ ...target });
-  const t0 = useRef<Record<K, number>>({ belief: 0, drift: 0, alarm: 0, dim: 0 });
+  const t0 = useRef<Record<K, number>>({ drift: 0, alarm: 0, dim: 0 });
   const signature = keys.map((k) => target[k].toFixed(4)).join("|");
   useEffect(() => {
     const now = performance.now() / 1000;
@@ -275,12 +476,9 @@ function WorldClinic({ clinic, validation }: { clinic: Clinic; validation: THREE
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature]);
 
-  const column = useRef<THREE.Mesh>(null);
-  const columnMat = useRef<THREE.MeshStandardMaterial>(null);
+  const pinMat = useRef<THREE.MeshBasicMaterial>(null);
   const ring = useRef<THREE.Mesh>(null);
-  const beacon = useRef<THREE.Group>(null);
-  const okRing = useRef<THREE.Mesh>(null);
-  const pulse = useRef<THREE.Mesh>(null);
+  const ripples = useRef<(THREE.Mesh | null)[]>([]);
   const still = useMemo(() => reducedMotion(), []);
 
   useFrame(() => {
@@ -292,40 +490,27 @@ function WorldClinic({ clinic, validation }: { clinic: Clinic; validation: THREE
       const e = k === "dim" ? 1 - Math.pow(1 - p, 3) : easeInOutCubic(p);
       v[k] = from.current[k] + (to.current[k] - from.current[k]) * e;
     }
-    const fade = 1 - 0.75 * v.dim;
-    const h = Math.max(0.02, v.belief * MARKER_HEIGHT);
-    if (column.current) {
-      column.current.scale.y = h;
-      column.current.position.y = h / 2;
-    }
-    if (columnMat.current) {
-      columnMat.current.color.copy(colours.belief).lerp(colours.recede, 0.7 * v.dim);
-      columnMat.current.emissive.copy(columnMat.current.color);
+    const fade = 1 - 0.7 * v.dim;
+    if (pinMat.current) {
+      pinMat.current.color.copy(colours.ink).lerp(colours.alarm, v.alarm);
+      pinMat.current.opacity = fade;
     }
     if (ring.current) {
-      const s = 1 + 0.6 * v.drift;
+      const s = 1 + 1.1 * v.drift;
       ring.current.scale.set(s, s, 1);
-      (ring.current.material as THREE.MeshBasicMaterial).opacity = (0.25 + 0.65 * v.drift) * fade;
+      (ring.current.material as THREE.MeshBasicMaterial).opacity = (0.3 + 0.6 * v.drift) * fade;
     }
-    (geo.arc.material as THREE.LineBasicMaterial).opacity = (0.08 + 0.72 * v.drift) * fade;
-    if (beacon.current) {
-      beacon.current.position.y = h + 0.22;
-      beacon.current.scale.setScalar(Math.max(0.001, v.alarm));
-      beacon.current.visible = v.alarm > 0.01;
-    }
-    if (okRing.current) {
-      okRing.current.position.y = h + 0.18;
-      (okRing.current.material as THREE.MeshBasicMaterial).opacity = 0.6 * (1 - v.alarm) * fade;
-      okRing.current.visible = v.alarm < 0.99;
-    }
-    if (pulse.current) {
-      const mat = pulse.current.material as THREE.MeshBasicMaterial;
-      pulse.current.visible = v.alarm > 0.01;
-      const phase = still ? 0.4 : (now % PULSE_SECONDS) / PULSE_SECONDS;
-      const s = 1 + 1.4 * (1 - Math.pow(1 - phase, 2));
-      pulse.current.scale.set(s, s, 1);
-      mat.opacity = (still ? 0.45 : 0.7 * (1 - phase)) * v.alarm * fade;
-    }
+    (geo.arc.material as THREE.LineBasicMaterial).opacity = (0.06 + 0.7 * v.drift) * fade;
+    // Two thin ripples, half a period apart, while the alarm is on.
+    ripples.current.forEach((m, i) => {
+      if (!m) return;
+      const mat = m.material as THREE.MeshBasicMaterial;
+      m.visible = v.alarm > 0.01;
+      const phase = still ? 0.35 + 0.3 * i : ((now / PULSE_SECONDS + i / 2) % 1);
+      const s = 1 + 4 * phase;
+      m.scale.set(s, s, 1);
+      mat.opacity = (still ? 0.5 : 0.8 * (1 - phase)) * v.alarm * fade;
+    });
   });
 
   const onOver = (e: ThreeEvent<PointerEvent>) => {
@@ -347,48 +532,34 @@ function WorldClinic({ clinic, validation }: { clinic: Clinic; validation: THREE
     <>
       <primitive object={geo.arc} />
       <group position={geo.at} quaternion={geo.quaternion}>
-        <mesh position={[0, 0.5, 0]} onPointerOver={onOver} onPointerOut={onOut} onClick={onClick}>
-          <cylinderGeometry args={[0.3, 0.3, 1.9, 12]} />
+        {/* Hit area: the pin and its leader line. */}
+        <mesh position={[0, stem / 2, 0]} onPointerOver={onOver} onPointerOut={onOut} onClick={onClick}>
+          <cylinderGeometry args={[0.22, 0.22, stem + 0.3, 12]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
-        <mesh ref={ring} position={[0, 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.13, 0.18, 48]} />
-          <meshBasicMaterial color={colours.drift} transparent opacity={0.3} depthWrite={false} />
+        <mesh ref={ring} position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.09, 0.105, 64]} />
+          <meshBasicMaterial color={token("--drift")} transparent opacity={0.4} depthWrite={false} />
         </mesh>
-        <mesh ref={pulse} position={[0, 0.016, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.16, 0.2, 48]} />
-          <meshBasicMaterial color={colours.alarmFlat} transparent opacity={0} depthWrite={false} />
-        </mesh>
-        <mesh ref={column}>
-          <cylinderGeometry args={[0.05, 0.05, 1, 20]} />
-          <meshStandardMaterial ref={columnMat} color={colours.belief} emissive={colours.belief} emissiveIntensity={0.3} roughness={0.35} metalness={0.1} />
-        </mesh>
-        <group ref={beacon}>
-          <mesh>
-            <sphereGeometry args={[0.085, 20, 14]} />
-            <meshBasicMaterial color={colours.alarm} toneMapped={false} />
+        {[0, 1].map((i) => (
+          <mesh key={i} ref={(m) => (ripples.current[i] = m)} position={[0, 0.007, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.1, 0.112, 64]} />
+            <meshBasicMaterial color={colours.alarm} transparent opacity={0} depthWrite={false} />
           </mesh>
-          <sprite scale={[0.75, 0.75, 1]}>
-            <spriteMaterial map={glowTexture()} color={colours.alarmFlat} transparent opacity={0.85} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
-          </sprite>
-        </group>
-        <mesh ref={okRing} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.05, 0.075, 28]} />
-          <meshBasicMaterial color={colours.ink} transparent opacity={0.6} side={THREE.DoubleSide} />
+        ))}
+        <mesh position={[0, 0.009, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.055, 32]} />
+          <meshBasicMaterial ref={pinMat} color={colours.ink} transparent />
         </mesh>
-        {/* Names only where they matter (alarms, focus), so nearby cities don't pile up. */}
-        {(alarm || selected || hovered) && (
-          <group position={[0, -0.05, 0]}>
-            <FacingLabel className={`globe-label${tone}`}>
-              <span className="globe-label__id">
-                {alarm && <i className="status-dot status-dot--alarm status-dot--still" aria-hidden="true" />}
-                {clinic.clinic_id}
-              </span>
-            </FacingLabel>
-          </group>
-        )}
+        <Callout height={stem} priority={(selected || hovered ? 4 : 0) + (alarm ? 2 : 0)} className={`callout${alarm ? " is-alarm" : ""}${tone}`}>
+          <span className="callout__id">
+            {alarm && <i className="status-dot status-dot--alarm status-dot--still" aria-hidden="true" />}
+            {clinic.clinic_id}
+          </span>
+          <span className="callout__value num">{pct(w.catch_rate)}</span>
+        </Callout>
         {hovered && (
-          <Html position={[0, MARKER_HEIGHT + 0.6, 0]} center zIndexRange={[30, 20]}>
+          <Html position={[0, stem + 0.2, 0]} center zIndexRange={[30, 20]} style={{ transform: "translateY(-110%)" }}>
             <div className="tooltip" role="tooltip">
               <div className="tooltip__title">
                 {clinic.clinic_id} <span className="tooltip__sub">{place.city}</span>
