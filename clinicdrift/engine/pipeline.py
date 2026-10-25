@@ -76,8 +76,7 @@ def main() -> None:
         run()
     print("\n== sample data", flush=True)
     runpy.run_path(str(REPO / "scripts" / "export_samples.py"), run_name="__main__")
-    print("
-== web app data", flush=True)
+    print("\n== web app data", flush=True)
     runpy.run_path(str(REPO / "scripts" / "export_web.py"), run_name="__main__")
 
 
