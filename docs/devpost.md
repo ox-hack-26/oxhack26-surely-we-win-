@@ -90,8 +90,8 @@ early warning, and a clear decision about what to do.
   and none of the datasets records age, sex or ethnicity, so every difference here is between sites
   and cameras, not patient groups.
 - **Storage:** Tiger Data: a `scan_events` hypertable, a real-time continuous aggregate and the engine's
-  weekly results (`db/migrations/`, `clinicdrift/db/tiger.py`, [docs/tiger.md](tiger.md)). Verified on a local
-  TimescaleDB 2.31; [TBD: confirm on the Tiger Cloud service]. Without a database the results are CSV files in
+  weekly results (`db/migrations/`, `clinicdrift/db/tiger.py`, [docs/tiger.md](tiger.md)). Verified on Tiger Cloud
+  (TimescaleDB 2.31.0), with 9,500 scan events, 200 weekly results and 10 clinics. Without a database the results are CSV files in
   `sample-data/`.
 - **Cause finding and reports:** Gemini, with rule-based and template fallbacks so the demo works offline.
 - **Alert script:** a short text alert per alarm (`addons/voice_alert.py`); voicing it is future work.
@@ -204,10 +204,10 @@ real-time continuous aggregate keeps per-clinic daily totals, so a new scan show
 written, and the dashboard rolls it up with `time_bucket` for any clinic and week range. Because grades
 carry their arrival time, one query answers "what had the experts confirmed by this week?" without
 using the future, and it matches the engine's own count. The scan hypertable is converted to Tiger's
-columnstore: 14.9 MB to 4.5 MB (3.3x) on our 19,000 rows. Ingestion is idempotent, so re-running the
+columnstore: 6,946,816 bytes to 3,284,992 bytes (2.1x; 52.71% smaller) on 9,500 scan events, with all 21 chunks converted. Ingestion is idempotent, so re-running the
 pipeline (`python -m clinicdrift.engine.pipeline --tiger`) never duplicates a scan. Details and the demo
 sequence: [docs/tiger.md](tiger.md).
-[TBD: these runs are on a local TimescaleDB 2.31; repeat on the Tiger Cloud service and update the numbers]
+Verified on Tiger Cloud (TimescaleDB 2.31.0) using `python -m clinicdrift.db.tiger ingest --data sample-data`, `compress`, and `check`. The check confirmed 9,500 scan events, 200 weekly monitoring records and 21/21 compressed chunks.
 
 ## Data and credits
 
