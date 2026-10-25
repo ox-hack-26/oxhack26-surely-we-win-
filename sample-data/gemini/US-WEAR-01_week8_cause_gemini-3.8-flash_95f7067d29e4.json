@@ -1,0 +1,22 @@
+{
+  "tag": "US-WEAR-01_week8_cause",
+  "model": "gemini-3.8-flash",
+  "kind": "json",
+  "response": {
+    "likely_cause": "Severe reduction in image sharpness and overall image quality, likely caused by camera defocus, dirty lens/optics, or operator error during acquisition.",
+    "category": "camera or image quality",
+    "evidence": [
+      "Drift score reached 0.99 (where 0.5 is training-like and 1.0 is clearly different).",
+      "Mean sharpness decreased by 90.9% from 31.8 in training to 2.91 in the flagged period.",
+      "Mean image quality decreased by 47.5% from 0.875 in training to 0.459 in the flagged period.",
+      "Referral rate shifted from 0.414 in training to 0.52 at the clinic (+25.5% relative change) across 50 scans, while resolution remained unchanged at 1020.0 pixels."
+    ],
+    "confidence": 0.9,
+    "recommended_checks": [
+      "Inspect and clean the camera objective lens for dust, smudges, or oil.",
+      "Verify the camera autofocus or manual focus mechanism calibration.",
+      "Review operator acquisition procedures, focusing technique, and patient positioning.",
+      "Audit recent flagged scans to confirm blur or defocus artifacts."
+    ]
+  }
+}
