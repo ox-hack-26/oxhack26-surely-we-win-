@@ -203,7 +203,7 @@ real-time continuous aggregate keeps per-clinic daily totals, so a new scan show
 written, and the dashboard rolls it up with `time_bucket` for any clinic and week range. Because grades
 carry their arrival time, one query answers "what had the experts confirmed by this week?" without
 using the future, and it matches the engine's own count. The scan hypertable is converted to Tiger's
-columnstore: 6,946,816 bytes to 3,284,992 bytes (2.1x; 52.71% smaller) on 9,500 scan events, with all 21 chunks converted. Ingestion is idempotent, so re-running the
+columnstore: 6.9 MB to 3.3 MB (2.1× compression, 52.7% storage reduction) on 9,500 scan events, with all 21 chunks converted. Ingestion is idempotent, so re-running the
 pipeline (`python -m clinicdrift.engine.pipeline --tiger`) never duplicates a scan. Details and the demo
 sequence: [docs/tiger.md](tiger.md).
 Verified on Tiger Cloud (TimescaleDB 2.31.0) using `python -m clinicdrift.db.tiger ingest --data sample-data`, `compress`, and `check`. The check confirmed 9,500 scan events, 200 weekly monitoring records and 21/21 compressed chunks.
