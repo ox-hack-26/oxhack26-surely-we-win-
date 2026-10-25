@@ -29,13 +29,13 @@ FAKE_SCANS = FIXTURES / "fake_scans.json"
 SAMPLE_ALARMS_DIR = config.ROOT.parent / "sample-data" / "alarms"
 
 
-def run(alarm_path=DEFAULT_ALARM, scans_path=None, weekly_path=None) -> dict:
+def run(alarm_path=DEFAULT_ALARM, scans_path=None, weekly_path=None, with_images=True) -> dict:
     alarm_path = Path(alarm_path)
     if scans_path is None and alarm_path == DEFAULT_ALARM:
         scans_path = FAKE_SCANS  # the fake alarm's scan ids only exist in the fake scans
     alarm = load_alarm(alarm_path)
     gemini_client.reset()
-    ev = gather_evidence(alarm, scans_path, weekly_path)
+    ev = gather_evidence(alarm, scans_path, weekly_path, with_images=with_images)
     out = config.out_dir()
 
     cause = find_cause(alarm, ev)
@@ -79,6 +79,8 @@ if __name__ == "__main__":
     mode.add_argument("--live", action="store_true", help="always call Gemini, ignoring saved answers")
     parser.add_argument("--scans", help="scans.parquet (default: processed/scans.parquet, else processed/standin/scans.parquet)")
     parser.add_argument("--weekly", help="weekly.parquet (default: processed/weekly.parquet)")
+    parser.add_argument("--no-images", action="store_true",
+                        help="send Gemini the numbers only; replays answers saved without images")
     args = parser.parse_args()
 
     gemini_client.MODE = "replay" if args.replay else "live" if args.live else "auto"
@@ -89,5 +91,5 @@ if __name__ == "__main__":
             print(f"No alarm files{' for ' + args.clinic if args.clinic else ''} in {folder}")
     else:
         paths = [Path(args.alarm)]
-    results = [run(p, args.scans, args.weekly) for p in paths]
+    results = [run(p, args.scans, args.weekly, with_images=not args.no_images) for p in paths]
     print(json.dumps(results[0] if len(results) == 1 else results, indent=2))
