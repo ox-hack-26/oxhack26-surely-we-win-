@@ -16,7 +16,7 @@ HOME_DIR=/opt/clinicdrift
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
-apt-get install -y git python3-venv
+apt-get install -y git python3-venv curl
 
 id -u clinicdrift >/dev/null 2>&1 || useradd --system --home-dir "$HOME_DIR" --create-home clinicdrift
 if [ -d "$HOME_DIR/repo/.git" ]; then
