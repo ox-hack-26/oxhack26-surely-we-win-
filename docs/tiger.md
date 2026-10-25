@@ -11,7 +11,7 @@ ClinicDrift writes every scan its simulated clinics take, the model's output for
    TIGER_DATABASE_URL=postgres://tsdbadmin:<PASSWORD>@<HOST>:<PORT>/tsdb?sslmode=require
    ```
 
-   The code also accepts `TIMESCALE_SERVICE_URL` or `DATABASE_URL`, and never prints the URL.
+   The code also accepts `TIMESCALE_SERVICE_URL` or `DATABASE_URL`, and never prints the URL or the password, even in connection errors. Use the service's direct connection string; the pooled one (database `tsdb_transaction`) also works, because nothing is set on the session and the dashboard's read-only mode is per transaction.
 3. `pip install -r requirements.txt` (includes `psycopg[binary]`).
 
 No service yet? A local TimescaleDB works the same:
@@ -71,7 +71,8 @@ Pitch line: *ClinicDrift streams every screening scan into a Tiger hypertable; a
 | Small batch ingested; repeating it adds no duplicates | yes (tests) | not yet |
 | Full sample-data and real-model runs ingested, then re-ingested with 0 inserted / 9,500 updated | yes | not yet |
 | Clinic and time-range queries return the replay's counts | yes (tests) | not yet |
-| Dashboard reads weekly results, clinics, settings and the Tiger panel | yes (tests and a browser check) | not yet |
+| Dashboard reads weekly results, clinics, settings and the Tiger panel, and cannot write | yes (tests and a browser check) | not yet |
+| Connection errors never show the password; stand-in engine runs ingest from `processed/standin/` | yes (tests) | not yet |
 | Demo event appears after refresh; clear-demo removes it | yes | not yet |
 | Columnstore: 21 of 21 chunks converted, scan_events 14.9 MB to 4.5 MB (3.3x) | yes | not yet |
 

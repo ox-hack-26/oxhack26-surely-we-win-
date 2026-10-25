@@ -85,9 +85,12 @@ def main() -> None:
     if args.tiger:
         print("\n== Tiger Data", flush=True)
         from clinicdrift.db import tiger
-        with tiger.connect() as conn:
-            tiger.migrate(conn)
-            print(json.dumps(tiger.ingest(conn, PROCESSED_DIR), indent=2))
+        try:
+            with tiger.connect() as conn:
+                tiger.migrate(conn)
+                print(json.dumps(tiger.ingest(conn, PROCESSED_DIR), indent=2))
+        except tiger.TigerError as err:
+            raise SystemExit(f"Tiger Data: {err}") from None
 
 
 if __name__ == "__main__":

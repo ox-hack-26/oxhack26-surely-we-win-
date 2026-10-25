@@ -95,6 +95,30 @@ def test_schema_name_is_checked(monkeypatch):
         tiger.schema()
 
 
+@pytest.mark.parametrize("url", [
+    "postgresql//tsdbadmin:S3cretPw9@localhost/tsdb",       # a colon lost when pasting
+    "postgres://tsdbadmin:S3c%zzretPw9@localhost:1/tsdb",   # an unencoded % in the password
+    "postgres://tsdbadmin:S3cretPw9@127.0.0.1:1/tsdb?connect_timeout=2",  # nothing listening
+])
+def test_connection_errors_never_show_the_password(monkeypatch, url):
+    monkeypatch.setenv("TIGER_DATABASE_URL", url)
+    with pytest.raises(tiger.TigerError) as err:
+        tiger.connect()
+    assert "S3c" not in str(err.value) and "Pw9" not in str(err.value)
+
+
+def test_stand_in_runs_read_the_model_from_standin(tmp_path):
+    """After an engine run on the stand-in, model.json and scans live in processed/standin/."""
+    for name in ("stream.csv", "weekly.csv", "clinics.json", "decision_settings.json"):
+        shutil.copy(SAMPLE / name, tmp_path / name)
+    (tmp_path / "standin").mkdir()
+    for name in ("model.json", "scans.csv"):
+        shutil.copy(SAMPLE / name, tmp_path / "standin" / name)
+    data = tiger.read_folder(tmp_path)
+    assert data["model"] == json.loads((SAMPLE / "model.json").read_text(encoding="utf-8"))
+    assert len(tiger.build_events(data, "v", data["weekly"])) == len(data["stream"])
+
+
 def test_missing_url_explains_what_to_set(monkeypatch):
     for var in tiger.URL_VARS:
         monkeypatch.delenv(var, raising=False)
@@ -188,6 +212,9 @@ def test_live_reingest_of_a_changed_replay_removes_stale_rows(db, tmp_path):
     result = tiger.ingest(db, folder)
     assert result["scan_events"]["removed"] == int((stream["week"] == 3).sum())
     assert db.execute(f"SELECT count(*) FROM {tiger.schema()}.scan_events").fetchone()[0] == int((stream["week"] <= 2).sum())
+    # the aggregate forgets the removed week too, without waiting for the background policy
+    week3 = tiger.scan_series(db, "US-WEAR-01", result["model_version"], "2026-01-19", "2026-01-26")
+    assert week3.empty
 
 
 @live
@@ -204,6 +231,12 @@ def test_live_dashboard_reads_what_was_stored(db, tmp_path, monkeypatch):
     row = weekly[(weekly.clinic_id == "US-WEAR-01") & (weekly.week == 3)].iloc[0]
     evidence = dash.expert_evidence("US-WEAR-01", info["model_version"], 3, row.week_start)
     assert evidence["grades_arrived"] >= 0  # no grades arrive in the first weeks; the query must still work
+
+    import psycopg
+    with dash.connect() as conn:  # the dashboard cannot write
+        with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):
+            conn.execute(f"DELETE FROM {tiger.schema()}.alarms")
+    tiger.demo_event(db, "US-WEAR-01", 2)  # and leaves no read-only state behind for writers
 
 
 @live

@@ -69,17 +69,37 @@ def database_url() -> str:
     return url
 
 
+def _redact(text: str, url: str) -> str:
+    """text with the URL and its password replaced by ***."""
+    secrets = [url]
+    match = re.search(r"//[^:/@]*:([^@]+)@", url)
+    if match:
+        secrets.append(match.group(1))
+    try:
+        from psycopg.conninfo import conninfo_to_dict
+        secrets.append(conninfo_to_dict(url).get("password") or "")
+    except Exception:
+        pass
+    for secret in sorted({s for s in secrets if s}, key=len, reverse=True):
+        text = text.replace(secret, "***")
+    return text
+
+
 def connect():
-    """An autocommit connection in UTC (the replay's times are UTC)."""
+    """An autocommit connection. Times are sent with their UTC offset, so the session time zone doesn't
+    matter; nothing is SET on the session, so it is also safe through Tiger's transaction pooler."""
     import psycopg
 
+    url = database_url()
     try:
-        conn = psycopg.connect(database_url(), connect_timeout=15, autocommit=True,
+        return psycopg.connect(url, connect_timeout=15, autocommit=True, prepare_threshold=None,
                                application_name="clinicdrift")
-    except psycopg.Error as err:  # the first line names the host at most, never the password
-        raise TigerError(f"could not connect to Tiger Data: {str(err).strip().splitlines()[0]}") from None
-    conn.execute("SET TIME ZONE 'UTC'")
-    return conn
+    except psycopg.ProgrammingError:  # the URL didn't parse; libpq would quote it, password and all
+        raise TigerError("TIGER_DATABASE_URL could not be parsed: it should look like "
+                         "postgres://tsdbadmin:PASSWORD@HOST:PORT/tsdb?sslmode=require") from None
+    except psycopg.Error as err:
+        raise TigerError("could not connect to Tiger Data: "
+                         + _redact(str(err).strip().splitlines()[0], url)) from None
 
 
 def _sql(path: Path) -> str:
@@ -152,17 +172,23 @@ def fingerprint(scan_ids) -> str:
 
 
 def read_folder(folder: Path) -> dict:
-    """Everything one ingest needs from an engine output folder (processed/ or sample-data/)."""
+    """Everything one ingest needs from an engine output folder (processed/ or sample-data/).
+
+    The model's files (model.json, scans) come from the folder itself, or from its standin/ subfolder
+    when the engine ran on the stand-in model, as clinicdrift.engine.estimate.load_inputs reads them.
+    """
     folder = Path(folder)
-    model = _json(folder, "model.json")
+    has_model = lambda f: (f / "model.json").exists() and any((f / n).exists() for n in ("scans.parquet", "scans.csv"))  # noqa: E731
+    model_dir = folder if has_model(folder) else folder / "standin" if has_model(folder / "standin") else folder
+    model = _json(model_dir, "model.json")
     if not model:
-        raise TigerError(f"no model.json in {folder}")
+        raise TigerError(f"no model.json in {folder} or {folder / 'standin'}")
     clinics = _json(folder, "clinics.json") or []
     alarms = [json.loads(p.read_text(encoding="utf-8")) for p in sorted((folder / "alarms").glob("*.json"))] \
         if (folder / "alarms").is_dir() else []
     return {"folder": folder, "model": model, "clinics": clinics, "alarms": alarms,
             "settings": _json(folder, "decision_settings.json"),
-            "stream": _read(folder, "stream"), "scans": _read(folder, "scans"), "weekly": _read(folder, "weekly")}
+            "stream": _read(folder, "stream"), "scans": _read(model_dir, "scans"), "weekly": _read(folder, "weekly")}
 
 
 def build_weekly(data: dict, model_version: str) -> pd.DataFrame:
@@ -305,7 +331,10 @@ def ingest(conn, folder: Path) -> dict:
                         "VALUES (%s, %s, %s, %s, %s, %s, %s)",
                         (a["clinic_id"], version, int(a["week"]), a["week_start"], a.get("alarm_reason"),
                          json.dumps(a), run_id))
-    refresh(conn, events["ts"].min(), events["ts"].max())
+    if ev_removed:  # removed rows may lie outside the new span: rematerialise everything
+        refresh(conn)
+    else:
+        refresh(conn, events["ts"].min(), events["ts"].max())
     return {"run_id": run_id, "model_version": version, "replay_fingerprint": replay, "source": str(folder),
             "scan_events": {"inserted": ev_new, "updated": ev_updated, "removed": ev_removed},
             "weekly": {"inserted": wk_new, "updated": wk_updated, "removed": wk_removed},

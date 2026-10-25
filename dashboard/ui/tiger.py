@@ -28,7 +28,11 @@ def schema() -> str:
 
 
 def connect():
-    """A read-only connection in UTC."""
+    """A connection whose every transaction is READ ONLY and in UTC.
+
+    Both are set per transaction (BEGIN READ ONLY, SET LOCAL), never on the session, so a pooled
+    server connection goes back to the pool unchanged. Use it as `with connect() as conn:`.
+    """
     try:
         from dotenv import load_dotenv
         load_dotenv(REPO / ".env", override=False)  # the repo's .env, where load_tiger keeps the URL
@@ -39,11 +43,11 @@ def connect():
         raise TigerError("CLINICDRIFT_DATA_MODE=tiger but TIGER_DATABASE_URL is not set (see docs/tiger.md)")
     import psycopg
     try:
-        conn = psycopg.connect(url, connect_timeout=10, autocommit=True, application_name="clinicdrift-dashboard")
+        conn = psycopg.connect(url, connect_timeout=10, prepare_threshold=None, application_name="clinicdrift-dashboard")
     except psycopg.Error as err:
         raise TigerError(f"could not connect to Tiger Data ({type(err).__name__}); check the service is running") from None
-    conn.execute("SET TIME ZONE 'UTC'")
-    conn.execute("SET default_transaction_read_only = on")
+    conn.read_only = True  # psycopg opens each transaction with BEGIN READ ONLY
+    conn.execute("SET LOCAL TIME ZONE 'UTC'")
     return conn
 
 
