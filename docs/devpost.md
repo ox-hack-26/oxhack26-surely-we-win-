@@ -181,21 +181,20 @@ estimate is cheapest (£352k), and at £100k ClinicDrift costs more than waiting
 against £489k), because several clinics that changed were actually fine.
 
 ### Best Use of Gemini
-[TBD Vansh: the alarms changed with the trained model (US-WEAR-01 now week 8, US-UPD-01 week 12). Rerun
-`python -m addons.run_demo --all --live`, commit the new `sample-data/gemini/` answers and update this
-paragraph from them.]
-Gemini looks at a flagged clinic's scan statistics and sample images to suggest a likely cause with
-evidence and checks, then drafts the incident report a human would otherwise write from scratch.
-Results: Gemini (gemini-3.5-flash-lite, and gemini-3.5-flash for one cause) named the cause and
-rewrote the incident report for all 8 alarms from the replay, looking at 2 flagged and 2 typical
-training scans for each. It sees only the clinic id, country and numbers: no site description, dataset
-name or scan id, which would give the simulated answer away (a test checks this). For the 7 drift
-alarms it named camera or image quality (confidence 0.95), matching the rule-based check, and added
-practical checks such as cleaning the lens and checking focus; none of those reports quoted a catch
-rate, which can't be verified on a drift alarm. For the faulty software update it did not find the
-real cause: like the rule-based check, it suggested a change in patient mix (confidence 0.45), because
-nothing in the scans themselves points to the update. The answers are saved in `sample-data/gemini/`,
-so the demo replays them with no API quota.
+Gemini looks at a flagged clinic's scan statistics (and, when the raw scans are available, sample
+images) to suggest a likely cause with evidence and checks, then drafts the incident report a human
+would otherwise write from scratch. It sees only the clinic id, country and numbers: no site
+description, dataset name or scan id, which would give the simulated answer away (a test checks this).
+Results: we reran Gemini (gemini-3.8-flash) on the two demo alarms from the trained model, 4 API calls
+in total, from the scan statistics only (no images were sent on this run). For US-WEAR-01 week 8 it
+named camera or image quality (confidence 0.9), pointing at a 91% drop in sharpness, and suggested
+cleaning the lens and checking focus. For the faulty software update, US-UPD-01 week 12, it did not
+find the real cause: it suggested a shift in patient mix (confidence 0.6) because the referral rate
+fell while image quality stayed flat, and nothing in the scans themselves points to the update. The
+other 6 alarms from the trained model were not rerun and use the rule-based cause and template report.
+On our first engine run (stand-in model), Gemini (gemini-3.5-flash-lite) named the cause for all 8
+alarms; those answers only match that run. The answers are saved in `sample-data/gemini/`, so the
+demo replays them with no API quota.
 
 ### Best Use of Tiger Data
 Every scan the simulated clinics take goes into a Tiger hypertable keyed on its event time, with the
