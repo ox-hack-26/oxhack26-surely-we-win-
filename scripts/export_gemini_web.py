@@ -2,7 +2,8 @@
 
 Run `python -m addons.run_demo --clinic <id> --replay` for each alarm first, so addons/out/ holds
 answers for the current alarms (--replay never calls Gemini). Only the alarms in the web bundle whose
-cause came from Gemini are exported, one file per clinic: web/public/data/gemini/<clinic_id>.json.
+cause came from Gemini are exported, one file per clinic: web/public/data/gemini/<clinic_id>.json,
+listed in index.json.
 """
 
 import json
@@ -27,6 +28,7 @@ def model_for(clinic: str, week: int) -> str | None:
 
 def main() -> None:
     DEST.mkdir(parents=True, exist_ok=True)
+    written = []
     alarms = json.loads(BUNDLE.read_text(encoding="utf-8"))["alarms"]
     for alarm in alarms:
         clinic, week = alarm["clinic_id"], alarm["week"]
@@ -51,7 +53,9 @@ def main() -> None:
         }
         target = DEST / f"{clinic}.json"
         target.write_text(json.dumps(record, indent=2), encoding="utf-8")
+        written.append({"clinic_id": clinic, "week": week})
         print(f"wrote {target.relative_to(ROOT)} ({model})")
+    (DEST / "index.json").write_text(json.dumps(written, indent=2), encoding="utf-8")
 
 
 if __name__ == "__main__":
