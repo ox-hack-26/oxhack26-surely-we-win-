@@ -1,5 +1,6 @@
-// The 3D view: ten clinics on a darkroom floor, the screening standard as a plane through them.
-// "This week" stands each clinic up as a column; "All weeks" lays its whole replay out as a ribbon.
+// The 3D view. "World" puts the clinics on a globe; "This week" stands each clinic up as a column
+// on a darkroom floor, the screening standard a plane through them; "All weeks" lays each
+// clinic's whole replay out as a ribbon.
 import { Environment, Grid, Html, Lightformer, OrbitControls, PerformanceMonitor } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import gsap from "gsap";
@@ -11,8 +12,11 @@ import { ClinicColumn } from "./ClinicColumn";
 import { HistoryView, ROW_SPACING, WEEK_DEPTH } from "./HistoryView";
 import { COLUMN_HEIGHT as H, SPACING, layout, token } from "./layout";
 import { storyCamera } from "../ui/storySteps";
+import { WorldView } from "./WorldView";
 
 const HOME = {
+  // The globe sits a little left and low, clear of the legend and the catch-rate bars above it.
+  world: { target: new THREE.Vector3(2.5, 2.1, 0), direction: new THREE.Vector3(0, 0.12, 1).normalize() },
   now: { target: new THREE.Vector3(0, 2.1, 0.2), direction: new THREE.Vector3(0, 0.44, 1).normalize() },
   // Three-quarter view from the front right: week 1 nearest, later weeks running away from you.
   history: { target: new THREE.Vector3(0.4, 1.1, 0.4), direction: new THREE.Vector3(0.38, 0.72, 1).normalize() },
@@ -22,7 +26,8 @@ const HOME = {
 function homeShot(mode: Mode, fov: number, aspect: number, halfWidth: number) {
   const across = Math.tan(((fov * Math.PI) / 180) / 2) * aspect;
   const { target, direction } = HOME[mode];
-  const distance = Math.min(38, Math.max(17, halfWidth / across + (mode === "now" ? 2.6 : 1)));
+  const distance =
+    mode === "world" ? Math.min(36, Math.max(25, halfWidth / across + 3)) : Math.min(38, Math.max(17, halfWidth / across + (mode === "now" ? 2.6 : 1)));
   return { target: target.clone(), position: target.clone().addScaledVector(direction, distance) };
 }
 
@@ -62,6 +67,8 @@ export function Stage() {
 /** A dark satin floor. It catches the studio light as a soft sheen; a true mirror floor was
  *  tried and dropped, since it re-renders the scene every frame and stalls integrated GPUs. */
 function Floor() {
+  const mode = useStore((s) => s.mode);
+  if (mode === "world") return null;
   return (
     <>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
@@ -94,11 +101,14 @@ function Scene() {
   const width = Math.max(...xs) - Math.min(...xs) + SPACING;
   const depth = Math.max(...zs) - Math.min(...zs) + SPACING * 1.2;
   const standard = bundle.settings.min_catch_rate * H;
-  const halfWidth = mode === "now" ? width / 2 + 0.6 : (bundle.clinics.length * ROW_SPACING) / 2 + (bundle.settings.n_weeks * WEEK_DEPTH) / 4;
+  const halfWidth =
+    mode === "world" ? 6 : mode === "now" ? width / 2 + 0.6 : (bundle.clinics.length * ROW_SPACING) / 2 + (bundle.settings.n_weeks * WEEK_DEPTH) / 4;
 
   return (
     <>
-      {mode === "now" ? (
+      {mode === "world" ? (
+        <WorldView />
+      ) : mode === "now" ? (
         <>
           {bundle.clinics.map((clinic) => (
             <ClinicColumn key={clinic.clinic_id} clinic={clinic} position={positions[clinic.clinic_id]} />
@@ -129,10 +139,10 @@ function Scene() {
         enableDamping
         dampingFactor={0.08}
         enablePan={false}
-        minDistance={6}
-        maxDistance={34}
-        minPolarAngle={0.25}
-        maxPolarAngle={1.38}
+        minDistance={mode === "world" ? 10 : 6}
+        maxDistance={mode === "world" ? 36 : 34}
+        minPolarAngle={mode === "world" ? 0.15 : 0.25}
+        maxPolarAngle={mode === "world" ? 2.99 : 1.38}
       />
       <CameraRig positions={positions} halfWidth={halfWidth} />
     </>

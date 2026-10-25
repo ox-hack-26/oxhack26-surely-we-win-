@@ -29,7 +29,8 @@ python scripts/export_web.py
 ## Links for the demo
 
 - `?week=9&clinic=US-WEAR-01` opens a clinic at a week; add `&hindsight=1` for the real catch rate.
-- `?view=results` opens the results; `?mode=history` opens the All weeks view.
+- `?view=results` opens the results; `?mode=history` opens All weeks, `?mode=now` the columns.
+- `?story=2` opens the story at step 2.
 - `?motion=full` plays every animation even when the computer asks for reduced motion.
 
 Keyboard: space plays and pauses, the arrow keys step through weeks (or story steps), Escape closes the clinic panel or the story.

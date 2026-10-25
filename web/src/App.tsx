@@ -7,11 +7,12 @@ import { Legend } from "./ui/Legend";
 import { Rail } from "./ui/Rail";
 import { Results } from "./ui/Results";
 import { StageTools } from "./ui/StageTools";
-import { StoryCard } from "./ui/Story";
+import { WorldBars } from "./ui/WorldBars";
+import { goToStep, StoryCard } from "./ui/Story";
 import { Timeline } from "./ui/Timeline";
 import { TopBar } from "./ui/TopBar";
 
-/** Deep links for demos: ?week=9&clinic=US-WEAR-01&hindsight=1, or ?view=results. */
+/** Deep links for demos: ?week=9&clinic=US-WEAR-01&hindsight=1, ?view=results, ?mode=history, ?story=2. */
 function fromUrl(bundle: Bundle): Partial<State> {
   const q = new URLSearchParams(window.location.search);
   const week = Number(q.get("week"));
@@ -21,13 +22,14 @@ function fromUrl(bundle: Bundle): Partial<State> {
     ...(clinic && bundle.clinics.some((c) => c.clinic_id === clinic) ? { selected: clinic } : {}),
     ...(q.get("hindsight") === "1" ? { hindsight: true } : {}),
     ...(q.get("view") === "results" ? { view: "results" as const } : {}),
-    ...(q.get("mode") === "history" ? { mode: "history" as const } : {}),
+    ...(q.get("mode") === "history" || q.get("mode") === "now" || q.get("mode") === "world" ? { mode: q.get("mode") as State["mode"] } : {}),
   };
 }
 
 export function App() {
   const bundle = useStore((s) => s.bundle);
   const view = useStore((s) => s.view);
+  const mode = useStore((s) => s.mode);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,7 +38,12 @@ export function App() {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json() as Promise<Bundle>;
       })
-      .then((b) => setState({ bundle: b, costs: defaultCosts(b), ...fromUrl(b) }))
+      .then((b) => {
+        setState({ bundle: b, costs: defaultCosts(b), ...fromUrl(b) });
+        // ?story=3 opens the story at its third step.
+        const step = Number(new URLSearchParams(window.location.search).get("story"));
+        if (step >= 1) goToStep(step - 1);
+      })
       .catch((e: Error) => setError(`Could not load the data (${e.message}). Run scripts/export_web.py, then reload.`));
   }, []);
 
@@ -56,6 +63,7 @@ export function App() {
           <Stage />
           <Legend />
           <StageTools />
+          {mode === "world" && <WorldBars />}
           <StoryCard />
         </div>
         <Rail />

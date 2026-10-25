@@ -3,15 +3,17 @@
 import { decideAll, realCatchRate } from "../data/model";
 import type { Bundle } from "../data/types";
 import { gbp, pct } from "../format";
-import type { View } from "../store";
+import type { Mode, View } from "../store";
 
 export interface StoryStep {
   title: string;
   body: string;
   week: number;
+  /** In "now", a clinic ID, "home" or "back"; in "world", a named globe shot. */
   shot: "home" | "back" | string;
   hindsight: boolean;
   view: View;
+  mode: Mode;
 }
 
 const WEAR = "US-WEAR-01";
@@ -30,20 +32,13 @@ export function storySteps(bundle: Bundle): StoryStep[] {
   const at = (id: string, week: number) => bundle.clinics.find((c) => c.clinic_id === id)?.weeks[week - 1];
 
   steps.push({
-    title: `${bundle.clinics.length} clinics, one eye-screening AI`,
-    body: `Each column is a clinic. Its height is the share of people with referable diabetic retinopathy that ClinicDrift believes the AI is catching this week, and the sleeve around it is how unsure it is. The flat plane is the UK screening standard: ${standard}.`,
+    title: `One AI, validated in California, screening at ${bundle.clinics.length} clinics`,
+    body: "Each marker is a clinic using the same eye-screening AI. Its height is the share of people with sight-threatening diabetic retinopathy that ClinicDrift believes the AI is catching this week. The lines run back to where the AI was validated, and brighten as a clinic's scans drift away from those.",
     week: 1,
-    shot: "home",
+    shot: "americas",
     hindsight: false,
     view: "monitor",
-  });
-  steps.push({
-    title: "The truth arrives five to seven weeks late",
-    body: "Experts grade one scan in ten, and each grade takes 35 to 49 days to come back. Until then nobody knows the real catch rate, so a clinic can fail for weeks before anyone sees it.",
-    week: 6,
-    shot: "home",
-    hindsight: false,
-    view: "monitor",
+    mode: "world",
   });
 
   const dayOne = bundle.clinics.filter((c) => c.changed_week === 1);
@@ -52,14 +47,25 @@ export function storySteps(bundle: Bundle): StoryStep[] {
     const caught = dayOne.filter((c) => decisions[c.clinic_id].firstAlarm === 1).length;
     const list = sites.length > 1 ? `${sites.slice(0, -1).join(", ")} and ${sites[sites.length - 1]}` : sites[0];
     steps.push({
-      title: `${dayOne.length} clinics are different from day one`,
-      body: `Their scans come from other cameras and other people (${list}). The aqua halo on the floor is drift: how easily a classifier tells this week's scans from the ones the AI was validated on. ClinicDrift raises a drift alarm at ${caught === dayOne.length ? "all" : caught} of them in week 1.`,
+      title: `Week 1: ${dayOne.length} clinics are different from day one`,
+      body: `In France and India the scans come from other cameras and other people (${list}). Their drift lines light up: a classifier can easily tell these scans from the validated ones. ClinicDrift raises a drift alarm at ${caught === dayOne.length ? "all" : caught} of them in week 1.`,
       week: 1,
-      shot: "back",
+      shot: "europe-india",
       hindsight: false,
       view: "monitor",
+      mode: "world",
     });
   }
+
+  steps.push({
+    title: "The truth arrives five to seven weeks late",
+    body: `Up close, each column is a clinic: its height is ClinicDrift's belief, the sleeve how unsure it is, the flat plane the UK screening standard of ${standard}. Experts grade one scan in ten, and each grade takes 35 to 49 days to come back, so a clinic can fail for weeks before anyone sees it.`,
+    week: 6,
+    shot: "home",
+    hindsight: false,
+    view: "monitor",
+    mode: "now",
+  });
 
   const wear = bundle.clinics.find((c) => c.clinic_id === WEAR);
   const wearAlarm = decisions[WEAR]?.firstAlarm;
@@ -73,6 +79,7 @@ export function storySteps(bundle: Bundle): StoryStep[] {
       shot: WEAR,
       hindsight: false,
       view: "monitor",
+      mode: "now",
     });
     steps.push({
       title: `Week ${wearAlarm}: ClinicDrift pulls the AI for review`,
@@ -81,6 +88,7 @@ export function storySteps(bundle: Bundle): StoryStep[] {
       shot: WEAR,
       hindsight: false,
       view: "monitor",
+      mode: "now",
     });
     const last = at(WEAR, n)!;
     const real = realCatchRate(wear, n);
@@ -93,6 +101,7 @@ export function storySteps(bundle: Bundle): StoryStep[] {
       shot: WEAR,
       hindsight: true,
       view: "monitor",
+      mode: "now",
     });
   }
 
@@ -108,6 +117,7 @@ export function storySteps(bundle: Bundle): StoryStep[] {
       shot: UPDATE,
       hindsight: false,
       view: "monitor",
+      mode: "now",
     });
     steps.push({
       title: `Week ${updAlarm}: a harm alarm, on evidence`,
@@ -116,6 +126,7 @@ export function storySteps(bundle: Bundle): StoryStep[] {
       shot: UPDATE,
       hindsight: false,
       view: "monitor",
+      mode: "now",
     });
   }
 
@@ -130,6 +141,7 @@ export function storySteps(bundle: Bundle): StoryStep[] {
       shot: "home",
       hindsight: false,
       view: "results",
+      mode: "now",
     });
   }
 
@@ -137,8 +149,9 @@ export function storySteps(bundle: Bundle): StoryStep[] {
   return steps;
 }
 
+/** The column view's camera shot for a story step (the globe turns itself in WorldView). */
 export function storyCamera(index: number, bundle: Bundle | null): string | null {
   if (!bundle) return null;
   const step = storySteps(bundle)[index];
-  return step && step.shot !== "home" ? step.shot : null;
+  return step && step.mode === "now" && step.shot !== "home" ? step.shot : null;
 }

@@ -8,7 +8,32 @@ export function Legend() {
   return (
     <details className="legend panel" open>
       <summary className="label">How to read it</summary>
-      {mode === "now" ? (
+      {mode === "world" ? (
+        <>
+          <p className="legend__lead">One eye-screening AI, validated in California, used at ten clinics. ClinicDrift predicts where it is quietly failing, weeks before the expert grades arrive.</p>
+          <ul>
+            <li>
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                <rect x="7.5" y="3" width="3" height="12" rx="1" className="fill--belief" />
+              </svg>
+              Column: catch rate ClinicDrift believes
+            </li>
+            <li>
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                <path d="M2 14 Q 9 1 16 12" fill="none" className="stroke--drift" strokeWidth="1.6" />
+              </svg>
+              Aqua ring and line home: drift from the validated scans
+            </li>
+            <li>
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                <circle cx="9" cy="9" r="4" className="fill--alarm" />
+              </svg>
+              Red light: alarm, pull the AI for review
+            </li>
+            <li className="is-off">Clinics are simulated; places are illustrative</li>
+          </ul>
+        </>
+      ) : mode === "now" ? (
         <ul>
           <li>
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">

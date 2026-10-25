@@ -5,8 +5,8 @@ import { decideAll, type Decisions } from "./data/model";
 import type { Bundle, Costs } from "./data/types";
 
 export type View = "monitor" | "results";
-/** The 3D view: this week's columns, or every week as ribbons running toward you. */
-export type Mode = "now" | "history";
+/** The 3D view: the clinics on a globe, this week's columns, or every week as ribbons. */
+export type Mode = "world" | "now" | "history";
 
 export interface State {
   bundle: Bundle | null;
@@ -37,7 +37,7 @@ let state: State = {
   view: "monitor",
   story: null,
   hindsight: false,
-  mode: "now",
+  mode: "world",
   cameraNonce: 0,
   orbited: false,
 };
