@@ -99,8 +99,6 @@ function ClinicDetail({ clinic, closeRef }: { clinic: Clinic; closeRef: React.Re
         </section>
       )}
 
-      {alarmFile && <GeminiCause clinicId={clinic.clinic_id} week={alarmFile.week} />}
-
       <section className="detail__readouts" aria-label="This week">
         <div className="readout">
           <div className="readout__value num">{pct(w.catch_rate)}</div>
@@ -203,71 +201,6 @@ function AlarmScans({ alarm }: { alarm: AlarmFile }) {
           ))}
         </tbody>
       </table>
-    </section>
-  );
-}
-
-type GeminiRecord = {
-  week: number;
-  model: string;
-  likely_cause: string;
-  category: string;
-  confidence: number;
-  evidence: string[];
-  recommended_checks: string[];
-  report_md: string;
-};
-
-/** Gemini's suggested cause and draft incident report, from scripts/export_gemini_web.py. Only
- *  alarms that were rerun on Gemini have a file; for the rest this shows nothing. */
-function GeminiCause({ clinicId, week }: { clinicId: string; week: number }) {
-  const [record, setRecord] = useState<GeminiRecord | null>(null);
-  useEffect(() => {
-    let live = true;
-    setRecord(null);
-    fetch(`${import.meta.env.BASE_URL}data/gemini/${clinicId}.json`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((g: GeminiRecord | null) => live && g?.week === week && setRecord(g))
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [clinicId, week]);
-  if (!record) return null;
-  return (
-    <section className="gemini-card" aria-label="Likely cause, suggested by Gemini">
-      <div className="gemini-card__head">
-        <span className="label">Likely cause · Gemini</span>
-        <span className="tag">Draft for human review</span>
-      </div>
-      <div className="gemini-card__title">
-        {record.category[0].toUpperCase() + record.category.slice(1)}
-        <span className="pill num">{pct(record.confidence)} confident</span>
-      </div>
-      <p>{record.likely_cause}</p>
-      <div>
-        <div className="label">Evidence</div>
-        <ul className="gemini-card__list">
-          {record.evidence.map((e) => (
-            <li key={e}>{e}</li>
-          ))}
-        </ul>
-      </div>
-      <div>
-        <div className="label">First checks</div>
-        <ol className="gemini-card__list">
-          {record.recommended_checks.map((c) => (
-            <li key={c}>{c}</li>
-          ))}
-        </ol>
-      </div>
-      <details className="gemini-card__report">
-        <summary>Incident report, drafted by Gemini</summary>
-        <pre>{record.report_md}</pre>
-      </details>
-      <div className="caption">
-        {record.model}, week <span className="num">{pad2(record.week)}</span> alarm. Gemini sees only the clinic's numbers, never the site or dataset.
-      </div>
     </section>
   );
 }

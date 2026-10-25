@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Bundle } from "./data/types";
 import { defaultCosts, setState, useStore, type State } from "./store";
 import { Stage } from "./stage/Stage";
+import { AiReport } from "./ui/AiReport";
 import { Drawer } from "./ui/Drawer";
 import { Legend } from "./ui/Legend";
 import { Rail } from "./ui/Rail";
@@ -65,6 +66,7 @@ export function App() {
           <StageTools />
           {mode === "world" && <WorldBars />}
           <StoryCard />
+          {view === "monitor" && <AiReport />}
         </div>
         <Rail />
         <Drawer />
