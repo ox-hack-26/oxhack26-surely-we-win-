@@ -18,7 +18,7 @@ The cost sliders use the formula in `docs/handoffs.md`, with reference specifici
 
 ## Tiger Data
 
-`sql/tiger_prize.sql` is a **review-only** optional schema for a hypertable and continuous aggregate. It has not been executed against your database. Compression/columnstore must be configured after checking TimescaleDB version and service support. The CSV dashboard does not yet read from Tiger; do not claim live database integration.
+With `CLINICDRIFT_DATA_MODE=tiger` the dashboard reads its weekly results, clinics, settings and alarms from Tiger Data and shows a *Stored in Tiger Data* panel (`ui/tiger.py`); the default is the offline `sample-data/` files, labelled as such. The schema that runs is `db/migrations/`; setup, commands and what has been verified are in [docs/tiger.md](../docs/tiger.md). `sql/tiger_prize.sql` is the earlier review-only draft.
 
 The old `sql/schema.sql` and `ui/storage.py` are retained for backward compatibility with earlier prototype tests, not as the new handoff schema.
 

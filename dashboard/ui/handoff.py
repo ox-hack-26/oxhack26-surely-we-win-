@@ -10,26 +10,26 @@ def data_root():
     return Path(os.getenv("CLINICDRIFT_SAMPLE_DATA", str(Path(__file__).resolve().parents[2] / "sample-data")))
 
 def data_mode():
-    """'files' (default): sample-data/ CSVs. 'tiger': weekly results from Tiger Data, loaded by scripts/load_tiger.py."""
+    """'files' (default, offline): the sample-data/ files. 'tiger': Tiger Data (docs/tiger.md)."""
     import os
     return "tiger" if os.getenv("CLINICDRIFT_DATA_MODE", "").strip().lower() == "tiger" else "files"
 
-def load_weekly_from_tiger():
-    import os
-    import psycopg
-    url = os.getenv("TIMESCALE_SERVICE_URL") or os.getenv("TIGER_DATABASE_URL") or os.getenv("DATABASE_URL")
-    if not url:
-        raise FileNotFoundError("CLINICDRIFT_DATA_MODE=tiger but TIMESCALE_SERVICE_URL is not set")
-    try:
-        with psycopg.connect(url, connect_timeout=10) as conn, conn.cursor() as cur:
-            cur.execute("SELECT * FROM clinicdrift_demo.weekly_results ORDER BY clinic_id, week")
-            return pd.DataFrame(cur.fetchall(), columns=[d.name for d in cur.description])
-    except psycopg.Error as exc:  # never show the URL: it holds the password
-        raise ValueError(f"Tiger Data query failed ({type(exc).__name__}); run scripts/load_tiger.py first") from None
+def load_source(root=None):
+    """(weekly, clinics, settings, info): from Tiger Data in tiger mode, else from the sample-data files.
 
-def load_handoff(root=None):
-    root = Path(root) if root else data_root()
-    weekly = load_weekly_from_tiger() if data_mode() == "tiger" else pd.read_csv(root / "weekly.csv")
+    info says where the data came from; in tiger mode also which model, which ingest run and how
+    many live demo events it includes. Database problems raise ui.tiger.TigerError.
+    """
+    if data_mode() == "tiger":
+        from ui.tiger import load_handoff as from_tiger
+        weekly, clinics, settings, info = from_tiger()
+        info = {"mode": "tiger", **info}
+    else:
+        root = Path(root) if root else data_root()
+        weekly = pd.read_csv(root / "weekly.csv")
+        clinics = json.loads((root / "clinics.json").read_text())
+        settings = json.loads((root / "decision_settings.json").read_text())
+        info = {"mode": "files", "source": str(root)}
     missing = REQUIRED - set(weekly.columns)
     if missing:
         raise ValueError(f"Missing handoff columns: {sorted(missing)}")
@@ -44,9 +44,11 @@ def load_handoff(root=None):
     for c in ("alarm", "alarm_this_week"):
         if c in weekly:
             weekly[c] = weekly[c].astype(str).str.lower().eq("true")
-    clinics = json.loads((root / "clinics.json").read_text())
-    settings = json.loads((root / "decision_settings.json").read_text())
-    return weekly.sort_values(["clinic_id", "week"]), clinics, settings
+    return weekly.sort_values(["clinic_id", "week"]), clinics, settings, info
+
+def load_handoff(root=None):
+    weekly, clinics, settings, _ = load_source(root)
+    return weekly, clinics, settings
 
 def replay_view(weekly, clinic_id, week):
     """Do not show hindsight or expert-graded results before their availability.
@@ -57,7 +59,10 @@ def replay_view(weekly, clinic_id, week):
     visible = weekly[(weekly.clinic_id == clinic_id) & (weekly.week <= week)].copy()
     return visible.drop(columns=[c for c in visible.columns if c.startswith("true_")], errors="ignore")
 
-def alarm_for_week(clinic_id, week, root=None):
+def alarm_for_week(clinic_id, week, root=None, model_version=None):
+    if data_mode() == "tiger":
+        from ui.tiger import alarm
+        return alarm(clinic_id, week, model_version)
     root = Path(root) if root else data_root()
     path = root / "alarms" / f"{clinic_id}_week{week:02d}.json"
     return json.loads(path.read_text()) if path.exists() else None

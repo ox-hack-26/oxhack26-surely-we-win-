@@ -7,9 +7,11 @@ files are used here, or the worn-camera copies won't line up.
     python -m clinicdrift.engine.pipeline           # check, then estimate, decide, backtest, robustness (~2 min),
                                                     # results, charts, samples, web app data
     python -m clinicdrift.engine.pipeline --check   # only check, and print the fingerprint
+    python -m clinicdrift.engine.pipeline --tiger   # ...and then store the results in Tiger Data (docs/tiger.md)
 """
 import argparse
 import hashlib
+import json
 import runpy
 
 import numpy as np
@@ -63,6 +65,8 @@ def check() -> bool:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--check", action="store_true", help="only check the inputs")
+    parser.add_argument("--tiger", action="store_true",
+                        help="after the engine, store its scan events and weekly results in Tiger Data")
     args = parser.parse_args()
     if not check():
         raise SystemExit(1)
@@ -78,6 +82,12 @@ def main() -> None:
     runpy.run_path(str(REPO / "scripts" / "export_samples.py"), run_name="__main__")
     print("\n== web app data", flush=True)
     runpy.run_path(str(REPO / "scripts" / "export_web.py"), run_name="__main__")
+    if args.tiger:
+        print("\n== Tiger Data", flush=True)
+        from clinicdrift.db import tiger
+        with tiger.connect() as conn:
+            tiger.migrate(conn)
+            print(json.dumps(tiger.ingest(conn, PROCESSED_DIR), indent=2))
 
 
 if __name__ == "__main__":

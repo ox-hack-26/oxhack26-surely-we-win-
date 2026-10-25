@@ -6,7 +6,8 @@ import os
 from pathlib import Path
 import streamlit as st
 from dotenv import load_dotenv
-from ui.handoff import load_handoff, replay_view, alarm_for_week, data_mode
+from ui.handoff import load_source, replay_view, alarm_for_week
+from ui.tiger import TigerError, expert_evidence, scan_series
 from ui.costs import recompute
 from ui.real_charts import catch_chart, drift_chart
 
@@ -20,13 +21,22 @@ page = st.sidebar.radio(
 )
 
 st.title('ClinicDrift  /  Reliability Command Centre')
-st.caption('OxHack 2026 · HRT: Best Use of Data for Predictions & Decision Making · Tiger Data integration optional')
+st.caption('OxHack 2026 · HRT: Best Use of Data for Predictions & Decision Making · storage: Tiger Data')
 st.warning('RESEARCH DEMONSTRATOR — Simulated clinics and timelines. Expert hindsight is not available to a real-time decision maker. No automatic clinical withdrawal.')
 
 try:
-    weekly, clinics, settings = load_handoff()
+    weekly, clinics, settings, source = load_source()
+except TigerError as exc:
+    st.error(f'Tiger Data unavailable: {exc}'); st.stop()
 except (FileNotFoundError, ValueError, KeyError, json.JSONDecodeError) as exc:
     st.error(f'Handoff data unavailable or invalid: {exc}'); st.stop()
+if source['mode'] == 'tiger':
+    st.success(f"Live: reading Tiger Data · model `{source['model_version']}` · ingest run {source['run_id']} "
+               f"at {str(source['ingested_at'])[:19]} UTC · replay {source['replay_fingerprint']}"
+               + (f" · includes {source['demo_live_events']} live demo event(s)" if source['demo_live_events'] else ''))
+else:
+    st.info('Offline mode: reading the sample-data/ files, not the database. '
+            'Set CLINICDRIFT_DATA_MODE=tiger in dashboard/.env to read Tiger Data (docs/tiger.md).')
 
 if page == "Results":
     st.header("ClinicDrift Backtest Results")
@@ -158,13 +168,54 @@ with right:
     st.caption(decision['assumption'])
     st.write(f"**Expert-graded positive cases already arrived:** {int(current.graded_cases)}")
     st.write(f"**Already-graded cases caught:** {int(current.graded_caught)}")
-    alarm = alarm_for_week(clinic, week)
+    try:
+        alarm = alarm_for_week(clinic, week, model_version=source.get('model_version'))
+    except TigerError as exc:
+        alarm = None; st.error(f'Tiger Data: {exc}')
     if alarm:
         st.success("Engine alarm evidence available")
         st.json(alarm)
 
+if source['mode'] == 'tiger':
+    st.divider()
+    st.subheader('Stored in Tiger Data')
+    st.caption('Queried live from the scan_events hypertable and its scan_stats_daily continuous aggregate '
+               "(real-time, so events written since the last refresh count too). Event times are the replay's "
+               "simulated scan times; p_referable is the model's output, not ground truth.")
+    bucket = st.radio('Time bucket', ['7 days', '1 day'], horizontal=True)
+    first = series.week_start.min()
+    try:
+        stored = scan_series(clinic, source['model_version'], first, current.week_start + pd.Timedelta(days=7), bucket)
+        evidence = expert_evidence(clinic, source['model_version'], week, current.week_start)
+    except TigerError as exc:
+        st.error(f'Tiger Data query failed: {exc}')
+    else:
+        if stored.empty:
+            st.info(f'No scan events stored for {clinic} up to week {week}. Run python -m clinicdrift.db.tiger ingest.')
+        else:
+            a, b = st.columns([2.1, 1], gap='large')
+            with a:
+                fig = px.bar(stored, x='period', y='n_scans', labels={'period': '', 'n_scans': 'Scans'},
+                             hover_data=['mean_p_referable', 'referral_rate', 'mean_quality', 'n_demo_live'])
+                fig.add_scatter(x=stored.period, y=stored.mean_p_referable * stored.n_scans.max(), mode='lines+markers',
+                                name='mean model score (scaled)', yaxis='y')
+                fig.update_layout(height=300, margin=dict(l=10, r=10, t=10, b=10), showlegend=False)
+                st.plotly_chart(fig, width='stretch')
+                st.dataframe(stored, hide_index=True, width='stretch')
+            with b:
+                st.metric(f'Scans stored (weeks 1–{week})', f"{int(stored.n_scans.sum()):,}")
+                st.metric('Live demo events in range', int(stored.n_demo_live.sum()))
+                st.metric('Expert grades arrived by end of week', evidence['grades_arrived'])
+                rate = evidence['catch_rate']
+                st.metric('Expert-confirmed catch rate (last 8 weeks)', 'no graded urgent cases yet' if rate is None
+                          else f"{evidence['caught']}/{evidence['referable']} = {rate:.0%}")
+                engine = (int(current.graded_caught), int(current.graded_cases))
+                same = engine == (evidence['caught'], evidence['referable'])
+                st.caption(('Matches' if same else 'Differs from') + f" the engine's own count ({engine[0]}/{engine[1]}). "
+                           'Only scans an expert graded, and only once the grade has arrived, count as ground truth.')
+
 st.divider()
 st.subheader('Replay history')
 st.dataframe(visible[['week','n_scans','catch_rate','catch_low','catch_high','est_sensitivity','drift_auc','graded_cases','graded_caught','alarm','alarm_reason']],hide_index=True,width='stretch')
-st.caption(('Source: Tiger Data (clinicdrift_demo.weekly_results)' if data_mode() == 'tiger' else 'Source: sample-data/ handoff')
-           + '; all clinic weeks are simulated. No database write occurs from this dashboard.')
+st.caption(('Source: Tiger Data (weekly_monitoring)' if source['mode'] == 'tiger' else 'Source: sample-data/ files (offline mode)')
+           + '; all clinic weeks are simulated. The dashboard only reads: it never writes to the database.')

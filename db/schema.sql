@@ -1,3 +1,5 @@
+-- SUPERSEDED: the schema that runs is db/migrations/ (python -m clinicdrift.db.tiger migrate; see docs/tiger.md).
+-- Kept as the original draft.
 -- Draft for Tiger Cloud (TimescaleDB). Sneha: run once on a fresh service and adjust
 -- freely, but keep column names in line with docs/handoffs.md.
 

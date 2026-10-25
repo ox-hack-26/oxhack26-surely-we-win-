@@ -44,6 +44,7 @@ clinicdrift/
     score.py     p_referable, features.npy, model.json, scans.parquet: python -m clinicdrift.data.score
     report.py    the accuracy drop at each site: python -m clinicdrift.data.report
     standin.py   stand-in model until Sarah's lands: python -m clinicdrift.data.standin
+  db/tiger.py    store scan events and weekly results in Tiger Data: python -m clinicdrift.db.tiger ingest
   engine/        Tejas: run these in order
     replay.py    simulated clinics: python -m clinicdrift.engine.replay
     estimate.py  label-free catch rate and drift per clinic-week
@@ -54,11 +55,10 @@ clinicdrift/
     charts.py    slide charts in docs/charts/, drawn from the same outputs
     pipeline.py  checks the model files fit, then runs all of the above: python -m clinicdrift.engine.pipeline
 addons/          Vansh: Gemini cause-finding and report, ElevenLabs alert (see addons/README.md)
-db/schema.sql    Sneha: Tiger Data tables
+db/migrations/   Tiger Data tables (python -m clinicdrift.db.tiger migrate; docs/tiger.md)
 docs/            hand-off formats
 sample-data/     small copies of the outputs for teammates without the scans
 scripts/         downloads; export_samples.py refreshes sample-data/, export_web.py the web app's data
-                 load_tiger.py loads the scans and weekly results into Tiger Data and checks them
 web/             the 3D web app (React, three.js): reads web/public/data/, written by scripts/export_web.py
 dashboard/       Sneha: Streamlit dashboard
 ```

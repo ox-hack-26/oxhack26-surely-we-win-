@@ -70,8 +70,9 @@ early warning, and a clear decision about what to do.
 - **Training data:** EyePACS (US).
 - **Deployment clinics:** APTOS 2019 (India), Messidor-2 (France), IDRiD (India), split into
   simulated clinics and weeks.
-- **Storage:** the Tiger Data schema and load scripts are written (`dashboard/sql/tiger_prize.sql`,
-  `dashboard/scripts/tiger_admin.py`) but haven't been run yet; today the results are CSV files in
+- **Storage:** Tiger Data: a `scan_events` hypertable, a real-time continuous aggregate and the engine's
+  weekly results (`db/migrations/`, `clinicdrift/db/tiger.py`, [docs/tiger.md](tiger.md)). Verified on a local
+  TimescaleDB 2.31; [TBD: confirm on the Tiger Cloud service]. Without a database the results are CSV files in
   `sample-data/`.
 - **Cause finding and reports:** Gemini, with rule-based and template fallbacks so the demo works offline.
 - **Alert script:** a short text alert per alarm (`addons/voice_alert.py`); voicing it is future work.
@@ -166,11 +167,16 @@ nothing in the scans themselves points to the update. The answers are saved in `
 so the demo replays them with no API quota.
 
 ### Best Use of Tiger Data
-The Tiger (TimescaleDB) schema is written but hasn't been run yet: `dashboard/sql/tiger_prize.sql`
-defines a `scan_events` hypertable keyed on time and a continuous aggregate that rolls scans up per
-clinic-week, and `dashboard/scripts/tiger_admin.py` creates the schema and loads records. The
-dashboard reads CSVs from `sample-data/` today, not Tiger.
-[TBD: Sneha runs tiger_prize.sql and loads the data, or delete this section before submitting]
+Every scan the simulated clinics take goes into a Tiger hypertable keyed on its event time, with the
+model's score, the cut-off in force and, weeks later, the expert grade with the time it arrived. A
+real-time continuous aggregate keeps per-clinic daily totals, so a new scan shows up the moment it is
+written, and the dashboard rolls it up with `time_bucket` for any clinic and week range. Because grades
+carry their arrival time, one query answers "what had the experts confirmed by this week?" without
+using the future, and it matches the engine's own count. The scan hypertable is converted to Tiger's
+columnstore: 14.9 MB to 4.5 MB (3.3x) on our 19,000 rows. Ingestion is idempotent, so re-running the
+pipeline (`python -m clinicdrift.engine.pipeline --tiger`) never duplicates a scan. Details and the demo
+sequence: [docs/tiger.md](tiger.md).
+[TBD: these runs are on a local TimescaleDB 2.31; repeat on the Tiger Cloud service and update the numbers]
 
 ## Data and credits
 
