@@ -1,8 +1,22 @@
 {
-  "model": "stand-in: ImageNet ResNet-50 features + logistic regression",
-  "C": 0.003,
-  "referral_threshold": 0.060225389897823334,
-  "val_auc": 0.7778540970511132,
-  "val_sensitivity": 0.8992248062015504,
-  "val_specificity": 0.3490566037735849
+  "model": "convnext_tiny.in12k_ft_in1k_384 fine-tuned on EyePACS train at 448 px",
+  "referral_threshold": 0.08264697343111038,
+  "val_sensitivity": 0.9008,
+  "val_specificity": 0.7108,
+  "val_auc": 0.9138,
+  "test_sensitivity": 0.8884,
+  "test_specificity": 0.697,
+  "test_auc": 0.9091,
+  "target_sensitivity": 0.9,
+  "temperature": 0.9381,
+  "arch": "convnext_tiny.in12k_ft_in1k_384",
+  "image_size": 448,
+  "feature_dim": 768,
+  "trained_on": "eyepacs train split",
+  "n_train": 24718,
+  "n_val": 3401,
+  "n_test": 6989,
+  "best_epoch": 2,
+  "epochs_run": 2,
+  "epochs_planned": 10
 }

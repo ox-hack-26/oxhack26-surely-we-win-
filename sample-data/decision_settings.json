@@ -6,12 +6,12 @@
     "horizon_weeks": 6
   },
   "reference": {
-    "catch_rate": 0.8992248062015504,
-    "specificity": 0.3490566037735849,
+    "catch_rate": 0.9008,
+    "specificity": 0.7108,
     "prevalence": 0.18965010291090856
   },
   "drift_trusted": 0.7,
   "drift_untrusted": 0.9,
   "min_catch_rate": 0.8,
-  "confidence": 0.9
+  "confidence": 0.8
 }

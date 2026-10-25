@@ -10,7 +10,7 @@ export function Legend() {
       <summary className="label">How to read it</summary>
       {mode === "world" ? (
         <>
-          <p className="legend__lead">One eye-screening AI, validated in California, used at ten clinics. ClinicDrift predicts where it is quietly failing, weeks before the expert grades arrive.</p>
+          <p className="legend__lead">One eye-screening AI, validated in California, used at ten clinics. ClinicDrift predicts where it is quietly going wrong, weeks before the expert grades arrive.</p>
           <ul>
             <li>
               <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">

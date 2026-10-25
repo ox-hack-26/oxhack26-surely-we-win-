@@ -170,7 +170,7 @@ def bar(ax, y, value, colour, height, radius_px=7):
 def backtest_chart(summary, footnote, path):
     s = summary.set_index("policy").loc[POLICY_ORDER]
     cd = s.loc["ClinicDrift"]
-    title = (f"Only ClinicDrift caught all {int(cd.clinics_changed)} failures: {int(cd.false_alarms)} false alarms, "
+    title = (f"Only ClinicDrift caught all {int(cd.clinics_changed)} changed clinics: {int(cd.false_alarms)} false alarms, "
              f"{cd.extra_missed_cases:g} extra missed cases")
     subtitle = "Four ways to monitor the same 10 clinics over 20 weeks · £10k per missed case, £150 per unnecessary referral, £25k per review"
     fig = frame(title, subtitle, footnote)
@@ -201,13 +201,13 @@ def robust_backtest_chart(robust, footnote, path):
     pol = {p["policy"]: p for p in robust["policies"]}
     cd, n = pol["ClinicDrift"], robust["n_draws"]
     every_time = cd["all_caught_share"] == 1 and cd["any_false_alarm_share"] == 0
-    title = (f"Across {n} draws of the grades, only ClinicDrift caught all {cd['changes']} failures every time, with no false alarms"
+    title = (f"Across {n} draws of the grades, only ClinicDrift caught all {cd['changes']} changed clinics every time, with no false alarms"
              if every_time else f"How the four monitoring policies did across {n} draws of the expert grades")
     subtitle = ("Same 10 clinics over 20 weeks · dots: median, lines: 90% of draws · "
                 "£10k per missed case, £150 per unnecessary referral, £25k per review")
     fig = frame(title, subtitle, footnote)
     panels = [
-        ("bar", "all_caught_share", f"Draws catching all {cd['changes']} failures", lambda v: f"{v:.0%}"),
+        ("bar", "all_caught_share", f"Draws catching all {cd['changes']} changes", lambda v: f"{v:.0%}"),
         ("bar", "any_false_alarm_share", "Draws with a false alarm", lambda v: f"{v:.0%}"),
         ("dot", "missed", "Extra urgent cases missed", lambda v: f"{v:.1f}"),
         ("dot", "cost", "Total cost", lambda v: f"£{v / 1000:,.0f}k"),
@@ -302,8 +302,15 @@ def main() -> None:
         d = weekly[weekly["clinic_id"] == WEAR].set_index("week")
         start, alarm = clinics[WEAR]["wear_from_week"], d.index[d["alarm"]].min()
         late = d.loc[15:]
-        title = (f"Camera wear: the AI's own estimate stayed near {late['est_sensitivity'].mean():.0%} "
-                 f"while the real catch rate fell to {d['true_sensitivity'].iloc[-1]:.0%}")
+        if late["est_sensitivity"].mean() - late["true_sensitivity"].mean() >= 0.05:
+            title = (f"Camera wear: the AI's own estimate stayed near {late['est_sensitivity'].mean():.0%} "
+                     f"while the real catch rate fell to {d['true_sensitivity'].iloc[-1]:.0%}")
+        else:
+            # The estimate tracked reality here, so the finding is timing, not a fooled estimate.
+            bt = pd.read_parquet(PROCESSED_DIR / "backtest.parquet").query("clinic_id == @WEAR").set_index("policy")
+            est_alarm = bt.loc["watch estimate", "first_alarm"]
+            title = (f"Camera wear: drift flagged the worn scans in week {alarm}; watching the AI's own estimate "
+                     + (f"only did in week {est_alarm:.0f}" if pd.notna(est_alarm) else "never did"))
         subtitle = (f"{WEAR} · scans blur and darken from week {start} · ClinicDrift saw the scans drift "
                     f"and raised the alarm in week {alarm}, before any grade could show the drop")
         clinic_story(weekly, WEAR, start, f"Camera wearing from week {start}", title, subtitle, footnote, OUT / "1-camera-wear.png")

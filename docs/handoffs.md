@@ -53,7 +53,7 @@ Made by `python -m clinicdrift.engine.replay`. 10 simulated clinics see 9,500 sc
 | --- | --- | --- |
 | `US-EYE-01`, `US-EYE-02` | Held-out EyePACS, 50 a week | Same as training: the alarm stays quiet |
 | `US-WEAR-01` | Held-out EyePACS; the camera wears from week 7 (blurrier and darker each week) | The main demo: the AI misses up to 9 urgent cases a week by week 20 while its own confidence says all is well; drift flags it by week 8–9 |
-| `US-UPD-01` | Held-out EyePACS; a vendor update raises the referral cut-off from week 10 | The scans look the same, so drift stays quiet and watching drift never alarms; the catch rate drops and ClinicDrift raises a `harm` alarm (week 13 on the stand-in) |
+| `US-UPD-01` | Held-out EyePACS; a vendor update raises the referral cut-off from week 10 | The scans look the same, so drift stays quiet and watching drift never alarms; the catch rate drops and ClinicDrift raises a `harm` alarm (week 12 on the trained model) |
 | `SW-MES-01` | EyePACS, then Messidor-2 from week 9 | A new camera: the AI over-refers healthy patients rather than missing cases |
 | `SW-APT-01` | EyePACS, then APTOS from week 11 | A second camera switch |
 | `FR-MES-01` | Messidor-2 from day one | Different from the start |
@@ -89,7 +89,7 @@ One row per clinic per week.
 | `p_below_standard` | float 0–1 | Belief that the catch rate is below 80%, the UK screening standard |
 | `alarm_this_week` | bool | This week's decision on its own: `expected_harm > review cost`, and either `trust < 0.5` (drift) or `p_below_standard >= 0.9` (harm) |
 | `alarm` | bool | Whether the AI is pulled for review. Once on it stays on until someone reviews it, so old grades can't switch it off |
-| `alarm_reason` | string or null | `drift` (the scans no longer look validated, so the catch rate can't be verified) or `harm` (the scans look normal but we're 90% sure the catch rate is below 80%) |
+| `alarm_reason` | string or null | `drift` (the scans no longer look validated, so the catch rate can't be verified) or `harm` (the scans look normal but we're 80% sure the catch rate is below 80%) |
 
 `python -m clinicdrift.engine.estimate` writes the label-free columns to `weekly_estimates.parquet`; `python -m clinicdrift.engine.decide` adds the rest and writes `weekly.parquet`, the alarm files and `decision_settings.json` (costs and reference levels). Default costs are illustrative: £10,000 per missed referable case, £150 per unnecessary referral, £25,000 per review, 6-week horizon. For the cost sliders the dashboard can redo the decision from these columns: `expected_harm = 6 × (10,000 × belief_cases × (validated catch rate − catch_rate) + 150 × (referrals − catch_rate × belief_cases − usual false referrals))`, then apply the drift/harm test above, or just call `decide.run(Costs(...), write=False)`.
 

@@ -1,21 +1,21 @@
 review_cost,policy,clinics_caught,clinics_changed,false_alarms,median_weeks_to_alarm,extra_missed_cases,total_cost_gbp
-5000,wait for grades,2,8,0,6.0,33.3,399700.0
-5000,watch estimate,1,8,0,0.0,29.3,361500.0
-5000,watch drift,7,8,0,1.0,20.3,242000.0
-5000,ClinicDrift,8,8,0,0.0,2.3,63200.0
-10000,wait for grades,2,8,0,6.0,33.3,409700.0
-10000,watch estimate,1,8,0,0.0,29.3,366500.0
-10000,watch drift,7,8,0,1.0,20.3,277000.0
-10000,ClinicDrift,8,8,0,0.0,2.3,103200.0
-25000,wait for grades,2,8,0,6.0,33.3,439700.0
-25000,watch estimate,1,8,0,0.0,29.3,381500.0
-25000,watch drift,7,8,0,1.0,20.3,382000.0
-25000,ClinicDrift,8,8,0,0.0,2.3,223200.0
-50000,wait for grades,2,8,0,6.0,33.3,489700.0
-50000,watch estimate,1,8,0,0.0,29.3,406500.0
-50000,watch drift,7,8,0,1.0,20.3,557000.0
-50000,ClinicDrift,8,8,0,0.0,2.3,423200.0
-100000,wait for grades,2,8,0,6.0,33.3,589700.0
-100000,watch estimate,1,8,0,0.0,29.3,456500.0
-100000,watch drift,7,8,0,1.0,20.3,907000.0
-100000,ClinicDrift,8,8,0,0.0,2.8,828700.0
+5000,wait for grades,0,8,0,,29.6,489200.0
+5000,watch estimate,2,8,0,4.5,6.7,262100.0
+5000,watch drift,7,8,0,1.0,19.8,245300.0
+5000,ClinicDrift,8,8,0,0.0,1.0,50200.0
+10000,wait for grades,0,8,0,,29.6,489200.0
+10000,watch estimate,2,8,0,4.5,6.7,272100.0
+10000,watch drift,7,8,0,1.0,19.8,280300.0
+10000,ClinicDrift,8,8,0,0.0,1.0,90200.0
+25000,wait for grades,0,8,0,,29.6,489200.0
+25000,watch estimate,2,8,0,4.5,6.7,302100.0
+25000,watch drift,7,8,0,1.0,19.8,385300.0
+25000,ClinicDrift,8,8,0,0.0,1.0,210200.0
+50000,wait for grades,0,8,0,,29.6,489200.0
+50000,watch estimate,2,8,0,4.5,6.7,352100.0
+50000,watch drift,7,8,0,1.0,19.8,560300.0
+50000,ClinicDrift,8,8,0,0.0,2.8,429200.0
+100000,wait for grades,0,8,0,,29.6,489200.0
+100000,watch estimate,2,8,0,4.5,6.7,452100.0
+100000,watch drift,7,8,0,1.0,19.8,910300.0
+100000,ClinicDrift,8,8,0,0.0,2.8,831400.0

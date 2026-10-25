@@ -33,7 +33,7 @@ export function storySteps(bundle: Bundle): StoryStep[] {
 
   steps.push({
     title: `One AI, validated in California, screening at ${bundle.clinics.length} clinics`,
-    body: "Each marker is a clinic using the same eye-screening AI. Its height is the share of people with sight-threatening diabetic retinopathy that ClinicDrift believes the AI is catching this week. The lines run back to where the AI was validated, and brighten as a clinic's scans drift away from those.",
+    body: "Each pin is a clinic using the same eye-screening AI. Its card shows the share of people with sight-threatening diabetic retinopathy that ClinicDrift believes the AI is catching this week. The lines run back to where the AI was validated, and brighten as a clinic's scans drift away from those.",
     week: 1,
     shot: "americas",
     hindsight: false,
@@ -46,9 +46,15 @@ export function storySteps(bundle: Bundle): StoryStep[] {
     const sites = [...new Set(dayOne.map((c) => c.site))];
     const caught = dayOne.filter((c) => decisions[c.clinic_id].firstAlarm === 1).length;
     const list = sites.length > 1 ? `${sites.slice(0, -1).join(", ")} and ${sites[sites.length - 1]}` : sites[0];
+    // What actually happened there, in hindsight: caught share and healthy people referred.
+    const all = dayOne.flatMap((c) => c.weeks);
+    const cases = all.reduce((t, w) => t + w.true_cases, 0);
+    const caughtShare = cases ? 1 - all.reduce((t, w) => t + w.true_missed, 0) / cases : null;
+    const healthy = all.reduce((t, w) => t + w.n_scans - w.true_cases, 0);
+    const overShare = healthy ? all.reduce((t, w) => t + w.true_false_referrals, 0) / healthy : null;
     steps.push({
       title: `Week 1: ${dayOne.length} clinics are different from day one`,
-      body: `In France and India the scans come from other cameras and other people (${list}). Their drift lines light up: a classifier can easily tell these scans from the validated ones. ClinicDrift raises a drift alarm at ${caught === dayOne.length ? "all" : caught} of them in week 1.`,
+      body: `In France and India the scans come from other cameras and other people (${list}). Their drift lines light up: a classifier can easily tell these scans from the validated ones. ClinicDrift raises a drift alarm at ${caught === dayOne.length ? "all" : caught} of them in week 1.${caughtShare !== null && overShare !== null ? ` In hindsight this model still caught ${pct(caughtShare)} of urgent cases there, but sent ${pct(overShare)} of healthy people to an eye clinic: outside its validated conditions, nobody could have known which way it would go.` : ""}`,
       week: 1,
       shot: "europe-india",
       hindsight: false,
@@ -92,11 +98,17 @@ export function storySteps(bundle: Bundle): StoryStep[] {
     });
     const last = at(WEAR, n)!;
     const real = realCatchRate(wear, n);
+    const wearStart = wear.wear_from_week;
+    const before = realCatchRate(wear, wearStart - 1, wearStart - 1);
+    const after = wear.weeks.filter((w) => w.week >= wearStart);
+    const missed = after.reduce((s, w) => s + w.true_missed, 0);
+    // Beyond what the validated AI would miss anyway (it misses about 1 in 10).
+    const extra = Math.round(missed - after.reduce((s, w) => s + w.true_cases, 0) * (1 - bundle.settings.reference.catch_rate));
     const waited = wear.alarm_weeks["wait for grades"][0];
     const arrives = last.grades_complete_week;
     steps.push({
-      title: "Hindsight: it really was failing",
-      body: `By week ${n} the real catch rate at ${WEAR} is ${pct(real)} over the last three weeks (the orange ring), while the AI's own estimate still says ${pct(last.est_sensitivity)}. ${arrives ? `The grades that show it arrive in week ${arrives}.` : ""} ${waited ? `Waiting for grades raises the alarm in week ${waited}.` : "Waiting for grades never raises the alarm in this replay."}`.replace(/\s+/g, " ").trim(),
+      title: "Hindsight: the worn camera was costing patients",
+      body: `The real catch rate at ${WEAR} fell from ${pct(before)} before the wear to ${pct(real)} over the last three weeks (the orange ring), and from week ${wearStart} on it missed ${missed} urgent cases, about ${extra} more than a working camera would have. The AI's own estimate still says ${pct(last.est_sensitivity)}. ${arrives ? `The grades that show it arrive in week ${arrives}.` : ""} ${waited ? `Waiting for grades raises the alarm in week ${waited}.` : "Waiting for grades never raises the alarm in this replay."}`.replace(/\s+/g, " ").trim(),
       week: n,
       shot: WEAR,
       hindsight: true,

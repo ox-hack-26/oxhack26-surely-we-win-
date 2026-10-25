@@ -7,47 +7,47 @@
   "estimated_catch_rate": 0.5,
   "ci_low": 0.05,
   "ci_high": 0.95,
-  "baseline_catch_rate": 0.8992248062015504,
-  "expected_missed_cases": 6.865170001983643,
-  "expected_harm": 337673.75049169833,
+  "baseline_catch_rate": 0.9008,
+  "expected_missed_cases": 9.804560661315918,
+  "expected_harm": 481890.1514107487,
   "review_cost": 25000,
-  "referral_threshold": 0.060225389897823334,
+  "referral_threshold": 0.08264697343111038,
   "alarm_reason": "drift",
-  "drift_auc": 0.9893599999999999,
+  "drift_auc": 0.9721199999999999,
   "flagged_scan_stats": {
     "n_scans": 50,
-    "mean_brightness": 0.3340021708607674,
-    "mean_contrast": 0.054793035760521885,
-    "mean_sharpness": 0.00022210811628610826,
-    "mean_quality": 0.19296,
+    "mean_brightness": 0.3703676164150238,
+    "mean_contrast": 0.056309208273887634,
+    "mean_sharpness": 22.067790985107422,
+    "mean_quality": 0.7814282178878784,
     "mean_resolution_px": 2065.92,
-    "referral_score_mean": 0.29909712076187134,
-    "referral_rate": 0.86
+    "referral_score_mean": 0.4217214286327362,
+    "referral_rate": 0.66
   },
   "training_scan_stats": {
-    "n_scans": 8000,
-    "mean_brightness": 0.3725177582898177,
-    "mean_contrast": 0.09630700049304869,
-    "mean_sharpness": 0.0003985424103721016,
-    "mean_quality": 0.499937484375,
-    "mean_resolution_px": 1023.14325,
-    "referral_score_mean": 0.1927846521139145,
-    "referral_rate": 0.684625
+    "n_scans": 24718,
+    "mean_brightness": 0.4015912413597107,
+    "mean_contrast": 0.08929377794265747,
+    "mean_sharpness": 31.782855987548828,
+    "mean_quality": 0.8748900294303894,
+    "mean_resolution_px": 1023.4994740674812,
+    "referral_score_mean": 0.22047899663448334,
+    "referral_rate": 0.4142729994336111
   },
   "flagged_scan_ids": [
+    "messidor2-01560",
+    "messidor2-01702",
     "messidor2-00504",
-    "messidor2-00680",
     "messidor2-01016",
-    "messidor2-00724",
-    "messidor2-00244",
-    "messidor2-00509"
+    "messidor2-01677",
+    "messidor2-01716"
   ],
   "reference_scan_ids": [
-    "eyepacs-18674",
-    "eyepacs-14837",
-    "eyepacs-31687",
-    "eyepacs-33378",
-    "eyepacs-03709",
-    "eyepacs-07185"
+    "eyepacs-33520",
+    "eyepacs-34913",
+    "eyepacs-25369",
+    "eyepacs-33519",
+    "eyepacs-33513",
+    "eyepacs-08401"
   ]
 }

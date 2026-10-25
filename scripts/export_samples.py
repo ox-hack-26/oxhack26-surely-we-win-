@@ -37,7 +37,11 @@ def main() -> None:
     stream.to_csv(OUT / "stream.csv", index=False)
     scans, _, model, _ = load_inputs()
     seen = scans[scans["scan_id"].isin(stream["scan_id"])]
-    seen[[c for c in SCAN_COLUMNS if c in seen]].to_csv(OUT / "scans.csv", index=False)
+    # Scores at full precision: the referral cut-off sits exactly on one validation score, and a
+    # float32 written at its short repr reads back a hair below it, flipping that scan's referral.
+    scans_out = seen[[c for c in SCAN_COLUMNS if c in seen]].copy()
+    scans_out["p_referable"] = scans_out["p_referable"].astype("float64")
+    scans_out.to_csv(OUT / "scans.csv", index=False, float_format="%.17g")
     pd.read_parquet(PROCESSED_DIR / "weekly.parquet").to_csv(OUT / "weekly.csv", index=False)
     pd.read_parquet(PROCESSED_DIR / "backtest.parquet").to_csv(OUT / "backtest.csv", index=False)
     pd.read_parquet(PROCESSED_DIR / "backtest_sweep.parquet").to_csv(OUT / "backtest_sweep.csv", index=False)

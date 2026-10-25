@@ -11,9 +11,11 @@ def test_data_contract_and_alarm():
     assert "US-WEAR-01" in weekly["clinic_id"].values
     assert "US-UPD-01" in weekly["clinic_id"].values
     assert len(weekly)>100
-    alarm=alarm_for_week('US-WEAR-01',9)
-    assert alarm['week']==9 and alarm['alarm_reason']=='drift'
-    row=weekly[(weekly.clinic_id=='US-WEAR-01')&(weekly.week==9)].iloc[0]
+    # The week the alarm starts depends on the model, so read it from the engine's results.
+    first=int(weekly[(weekly.clinic_id=='US-WEAR-01')&weekly.alarm.astype(bool)].week.min())
+    alarm=alarm_for_week('US-WEAR-01',first)
+    assert alarm['week']==first and alarm['alarm_reason']=='drift'
+    row=weekly[(weekly.clinic_id=='US-WEAR-01')&(weekly.week==first)].iloc[0]
     assert bool(row.alarm)
 
 def test_replay_no_future_truth():

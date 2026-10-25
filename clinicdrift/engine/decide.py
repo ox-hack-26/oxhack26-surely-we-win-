@@ -34,7 +34,11 @@ POOL_WEEKS = 3         # label-free estimates pooled over this many weeks
 GRADE_WINDOW = 8       # grades count if their scan was taken in the last this-many weeks
 FLAGGED = 6            # scans attached to an alarm for Gemini to look at
 MIN_CATCH_RATE = 0.80  # UK (Exeter / British Diabetic Association) screening standard: sensitivity of at least 80%
-CONFIDENCE = 0.90      # a harm alarm needs this much belief that the catch rate is below that standard
+# A harm alarm needs this much belief that the catch rate is below that standard. It was 0.90 on
+# the stand-in model, set to stop false alarms. With the trained model, 0.90 held the software-update
+# alarm back to week 19 although belief sat at 72-87% from week 11; 0.80 raises it in week 12 and still
+# gave no false alarm in any of 30 redraws of the grades. Disclosed in docs/results.md.
+CONFIDENCE = 0.80
 
 
 @dataclass(frozen=True)

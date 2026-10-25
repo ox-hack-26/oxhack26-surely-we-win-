@@ -1,0 +1,53 @@
+{
+  "clinic_id": "US-UPD-01",
+  "site": "EyePACS, faulty software update",
+  "country": "United States",
+  "week": 12,
+  "week_start": "2026-03-23",
+  "estimated_catch_rate": 0.6733428872215494,
+  "ci_low": 0.47518609546105156,
+  "ci_high": 0.8465010168734884,
+  "baseline_catch_rate": 0.9008,
+  "expected_missed_cases": 3.0348454985525053,
+  "expected_harm": 117816.90276072492,
+  "review_cost": 25000,
+  "referral_threshold": 0.48605406284332275,
+  "alarm_reason": "harm",
+  "drift_auc": 0.56084,
+  "flagged_scan_stats": {
+    "n_scans": 50,
+    "mean_brightness": 0.38247111439704895,
+    "mean_contrast": 0.08914655447006226,
+    "mean_sharpness": 28.546436309814453,
+    "mean_quality": 0.8705703020095825,
+    "mean_resolution_px": 1024.0,
+    "referral_score_mean": 0.20673206448554993,
+    "referral_rate": 0.16
+  },
+  "training_scan_stats": {
+    "n_scans": 24718,
+    "mean_brightness": 0.4015912413597107,
+    "mean_contrast": 0.08929377794265747,
+    "mean_sharpness": 31.782855987548828,
+    "mean_quality": 0.8748900294303894,
+    "mean_resolution_px": 1023.4994740674812,
+    "referral_score_mean": 0.22047899663448334,
+    "referral_rate": 0.4142729994336111
+  },
+  "flagged_scan_ids": [
+    "eyepacs-08435",
+    "eyepacs-18019",
+    "eyepacs-16397",
+    "eyepacs-19011",
+    "eyepacs-34337",
+    "eyepacs-10010"
+  ],
+  "reference_scan_ids": [
+    "eyepacs-33520",
+    "eyepacs-34913",
+    "eyepacs-25369",
+    "eyepacs-33519",
+    "eyepacs-33513",
+    "eyepacs-08401"
+  ]
+}

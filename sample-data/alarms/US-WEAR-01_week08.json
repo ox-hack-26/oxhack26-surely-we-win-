@@ -1,0 +1,53 @@
+{
+  "clinic_id": "US-WEAR-01",
+  "site": "EyePACS, wearing camera",
+  "country": "United States",
+  "week": 8,
+  "week_start": "2026-02-23",
+  "estimated_catch_rate": 0.8571428571428571,
+  "ci_low": 0.6069622310029172,
+  "ci_high": 0.9914875553891529,
+  "baseline_catch_rate": 0.9008,
+  "expected_missed_cases": 1.3546435922207758,
+  "expected_harm": 30377.77594825057,
+  "review_cost": 25000,
+  "referral_threshold": 0.08264697343111038,
+  "alarm_reason": "drift",
+  "drift_auc": 0.9900800000000001,
+  "flagged_scan_stats": {
+    "n_scans": 50,
+    "mean_brightness": 0.38636448979377747,
+    "mean_contrast": 0.08848796784877777,
+    "mean_sharpness": 2.906735420227051,
+    "mean_quality": 0.4589328467845917,
+    "mean_resolution_px": 1024.0,
+    "referral_score_mean": 0.173018679022789,
+    "referral_rate": 0.52
+  },
+  "training_scan_stats": {
+    "n_scans": 24718,
+    "mean_brightness": 0.4015912413597107,
+    "mean_contrast": 0.08929377794265747,
+    "mean_sharpness": 31.782855987548828,
+    "mean_quality": 0.8748900294303894,
+    "mean_resolution_px": 1023.4994740674812,
+    "referral_score_mean": 0.22047899663448334,
+    "referral_rate": 0.4142729994336111
+  },
+  "flagged_scan_ids": [
+    "eyepacs-15658@0.14",
+    "eyepacs-07001@0.14",
+    "eyepacs-05594@0.14",
+    "eyepacs-33809@0.14",
+    "eyepacs-21002@0.14",
+    "eyepacs-07008@0.14"
+  ],
+  "reference_scan_ids": [
+    "eyepacs-33520",
+    "eyepacs-34913",
+    "eyepacs-25369",
+    "eyepacs-33519",
+    "eyepacs-33513",
+    "eyepacs-08401"
+  ]
+}

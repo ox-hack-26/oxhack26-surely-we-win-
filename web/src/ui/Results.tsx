@@ -49,8 +49,8 @@ export function Results() {
         <header className="results__head">
           <h1 id="results-h" className="display">
             {allCaught
-              ? `ClinicDrift caught all ${cd.changes} failing clinics in all ${robust.n_draws} replays`
-              : `ClinicDrift caught a median of ${cd.caught_median} of ${cd.changes} failing clinics`}
+              ? `ClinicDrift caught all ${cd.changes} changed clinics in all ${robust.n_draws} replays`
+              : `ClinicDrift caught a median of ${cd.caught_median} of ${cd.changes} changed clinics`}
           </h1>
           <p className="results__lede">
             Which scans get an expert grade is chance, so the backtest was replayed {robust.n_draws} times with fresh draws. ClinicDrift
@@ -66,7 +66,7 @@ export function Results() {
             <thead>
               <tr>
                 <th scope="col">Policy</th>
-                <th scope="col">Failing clinics caught</th>
+                <th scope="col">Changed clinics caught</th>
                 <th scope="col">Any false alarm</th>
                 <th scope="col">Extra missed cases, median and 90% range</th>
                 <th scope="col">Total cost, median and 90% range</th>

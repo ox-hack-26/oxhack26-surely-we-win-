@@ -34,11 +34,13 @@ def alarm():
 
 
 SAMPLE_ALARMS = sorted((Path(__file__).parents[1] / "sample-data" / "alarms").glob("*.json"))
+# Alarms frozen from one engine run, for tests that pin exact numbers (see fixtures/README.md).
+FIXTURES = Path(__file__).parent / "fixtures" / "alarms"
 
 
 @pytest.fixture
 def drift_alarm():
-    return load_alarm(Path(__file__).parents[1] / "sample-data" / "alarms" / "SW-MES-01_week09.json")
+    return load_alarm(FIXTURES / "SW-MES-01_week09.json")
 
 
 @pytest.fixture
@@ -137,7 +139,7 @@ def test_referral_change_leads_the_cause(drift_alarm):
 
 
 def test_worn_camera_stays_camera():
-    wear = load_alarm(Path(__file__).parents[1] / "sample-data" / "alarms" / "US-WEAR-01_week09.json")
+    wear = load_alarm(FIXTURES / "US-WEAR-01_week09.json")
     cause = rule_cause(wear)
     assert cause.category == "camera or image quality"
     assert not cause.likely_cause.startswith("The AI is referring")

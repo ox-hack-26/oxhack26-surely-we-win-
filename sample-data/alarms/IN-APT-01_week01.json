@@ -7,47 +7,47 @@
   "estimated_catch_rate": 0.5,
   "ci_low": 0.05,
   "ci_high": 0.95,
-  "baseline_catch_rate": 0.8992248062015504,
-  "expected_missed_cases": 8.123658180236816,
-  "expected_harm": 394131.47501967836,
+  "baseline_catch_rate": 0.9008,
+  "expected_missed_cases": 12.54249382019043,
+  "expected_harm": 621909.6447769902,
   "review_cost": 25000,
-  "referral_threshold": 0.060225389897823334,
+  "referral_threshold": 0.08264697343111038,
   "alarm_reason": "drift",
-  "drift_auc": 0.98804,
+  "drift_auc": 0.9787600000000001,
   "flagged_scan_stats": {
     "n_scans": 50,
-    "mean_brightness": 0.293735648393631,
-    "mean_contrast": 0.06468199640512466,
-    "mean_sharpness": 6.200335697940317e-05,
-    "mean_quality": 0.10551,
+    "mean_brightness": 0.3363305628299713,
+    "mean_contrast": 0.06530463695526123,
+    "mean_sharpness": 7.370638370513916,
+    "mean_quality": 0.6988471746444702,
     "mean_resolution_px": 224.0,
-    "referral_score_mean": 0.35446086525917053,
-    "referral_rate": 0.8
+    "referral_score_mean": 0.5608280301094055,
+    "referral_rate": 0.9
   },
   "training_scan_stats": {
-    "n_scans": 8000,
-    "mean_brightness": 0.3725177582898177,
-    "mean_contrast": 0.09630700049304869,
-    "mean_sharpness": 0.0003985424103721016,
-    "mean_quality": 0.499937484375,
-    "mean_resolution_px": 1023.14325,
-    "referral_score_mean": 0.1927846521139145,
-    "referral_rate": 0.684625
+    "n_scans": 24718,
+    "mean_brightness": 0.4015912413597107,
+    "mean_contrast": 0.08929377794265747,
+    "mean_sharpness": 31.782855987548828,
+    "mean_quality": 0.8748900294303894,
+    "mean_resolution_px": 1023.4994740674812,
+    "referral_score_mean": 0.22047899663448334,
+    "referral_rate": 0.4142729994336111
   },
   "flagged_scan_ids": [
-    "aptos-02215",
-    "aptos-00695",
-    "aptos-00806",
-    "aptos-01743",
-    "aptos-00894",
-    "aptos-00923"
+    "aptos-01808",
+    "aptos-00899",
+    "aptos-01678",
+    "aptos-00472",
+    "aptos-01996",
+    "aptos-00034"
   ],
   "reference_scan_ids": [
-    "eyepacs-18674",
-    "eyepacs-14837",
-    "eyepacs-31687",
-    "eyepacs-33378",
-    "eyepacs-03709",
-    "eyepacs-07185"
+    "eyepacs-33520",
+    "eyepacs-34913",
+    "eyepacs-25369",
+    "eyepacs-33519",
+    "eyepacs-33513",
+    "eyepacs-08401"
   ]
 }
