@@ -3,6 +3,7 @@ import type { Bundle } from "./data/types";
 import { defaultCosts, setState, useStore, type State } from "./store";
 import { Stage } from "./stage/Stage";
 import { AiReport } from "./ui/AiReport";
+import { Dashboard } from "./ui/Dashboard";
 import { Drawer } from "./ui/Drawer";
 import { Legend } from "./ui/Legend";
 import { Rail } from "./ui/Rail";
@@ -13,7 +14,7 @@ import { goToStep, StoryCard } from "./ui/Story";
 import { Timeline } from "./ui/Timeline";
 import { TopBar } from "./ui/TopBar";
 
-/** Deep links for demos: ?week=9&clinic=US-WEAR-01&hindsight=1, ?view=results, ?mode=history, ?story=2. */
+/** Deep links for demos: ?week=9&clinic=US-WEAR-01&hindsight=1, ?view=results, ?view=dashboard, ?mode=history, ?story=2. */
 function fromUrl(bundle: Bundle): Partial<State> {
   const q = new URLSearchParams(window.location.search);
   const week = Number(q.get("week"));
@@ -22,7 +23,7 @@ function fromUrl(bundle: Bundle): Partial<State> {
     ...(week >= 1 && week <= bundle.settings.n_weeks ? { week } : {}),
     ...(clinic && bundle.clinics.some((c) => c.clinic_id === clinic) ? { selected: clinic } : {}),
     ...(q.get("hindsight") === "1" ? { hindsight: true } : {}),
-    ...(q.get("view") === "results" ? { view: "results" as const } : {}),
+    ...(q.get("view") === "results" || q.get("view") === "dashboard" ? { view: q.get("view") as State["view"] } : {}),
     ...(q.get("mode") === "history" || q.get("mode") === "now" || q.get("mode") === "world" ? { mode: q.get("mode") as State["mode"] } : {}),
   };
 }
@@ -71,6 +72,7 @@ export function App() {
         <Rail />
         <Drawer />
         {view === "results" && <Results />}
+        {view === "dashboard" && <Dashboard />}
       </main>
       {view === "monitor" && <Timeline />}
     </div>

@@ -21,6 +21,9 @@ export function TopBar() {
         <button type="button" aria-pressed={view === "results"} onClick={() => setState({ view: "results", story: null, playing: false })}>
           Results
         </button>
+        <button type="button" aria-pressed={view === "dashboard"} onClick={() => setState({ view: "dashboard", story: null, playing: false })}>
+          Dashboard
+        </button>
       </nav>
       <label className="switch">
         <input type="checkbox" role="switch" checked={hindsight} onChange={(e) => setState({ hindsight: e.target.checked })} />
