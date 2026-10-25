@@ -70,6 +70,20 @@ early warning, and a clear decision about what to do.
 - **Training data:** EyePACS (US).
 - **Deployment clinics:** APTOS 2019 (India), Messidor-2 (France), IDRiD (India), split into
   simulated clinics and weeks.
+- **Model:** an ImageNet-pretrained ConvNeXt-tiny (`convnext_tiny.in12k_ft_in1k_384` from timm)
+  fine-tuned end to end on 24,718 EyePACS training scans, each cropped to the retina and resized to
+  448 px, with rotation, flip, zoom and brightness augmentation and a second head that regresses the
+  0–4 grade to help training. EyePACS is split by patient (70/10/20), so no patient's two eyes sit on
+  both sides. We planned 10 epochs but stopped after 2, because the laptop GPU was power-capped; the
+  epoch with the best validation AUC is kept. Its scores are calibrated with a single temperature
+  (T = 0.94) fitted on validation, and the referral cut-off (p ≥ 0.083) is set there to catch 90% of
+  referable cases (grade 2 or worse). Validation AUC 0.914; on 6,989 held-out EyePACS scans AUC 0.909,
+  sensitivity 88.8% and specificity 69.7% at that cut-off. At the other sites it still catches 99–100%
+  of referable cases but over-refers healthy patients (specificity 14–52%); a simulated wearing camera
+  cuts sensitivity to 82% (AUC 0.69). Per-site table: [docs/model-report.md](model-report.md). Two
+  limits: our APTOS copy is 224 px, so it is a low-resolution test rather than a different population,
+  and none of the datasets records age, sex or ethnicity, so every difference here is between sites
+  and cameras, not patient groups.
 - **Storage:** Tiger Data: a `scan_events` hypertable, a real-time continuous aggregate and the engine's
   weekly results (`db/migrations/`, `clinicdrift/db/tiger.py`, [docs/tiger.md](tiger.md)). Verified on a local
   TimescaleDB 2.31; [TBD: confirm on the Tiger Cloud service]. Without a database the results are CSV files in

@@ -56,6 +56,7 @@ clinicdrift/
     pipeline.py  checks the model files fit, then runs all of the above: python -m clinicdrift.engine.pipeline
 addons/          Vansh: Gemini cause-finding and report, ElevenLabs alert (see addons/README.md)
 db/migrations/   Tiger Data tables (python -m clinicdrift.db.tiger migrate; docs/tiger.md)
+deploy/          vultr-dashboard.sh: the dashboard on a Vultr VM (paste as Cloud-Init User-Data)
 docs/            hand-off formats
 sample-data/     small copies of the outputs for teammates without the scans
 scripts/         downloads; export_samples.py refreshes sample-data/, export_web.py the web app's data
