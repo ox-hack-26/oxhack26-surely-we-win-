@@ -1,9 +1,22 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AlarmFile, Clinic, ScanStats } from "../data/types";
 import { gbp, num, pad2, pct, REASON_LABEL } from "../format";
 import { setState, useBundle, useDecisions, useStore } from "../store";
 import { CatchChart, DriftChart } from "./charts";
 import { Status } from "./Rail";
+
+/** A scan, or, when its file isn't there (only IDRiD images are in the public repo, for dataset
+ *  licences), a placeholder that says why rather than a broken image. */
+function ScanImage({ id, alt }: { id: string; alt: string }) {
+  const [missing, setMissing] = useState(false);
+  if (missing)
+    return (
+      <span className="scan-missing" role="img" aria-label={`${alt}: image not included`}>
+        Licensed image, not in the public repo
+      </span>
+    );
+  return <img src={scanUrl(id)} alt={alt} loading="lazy" onError={() => setMissing(true)} />;
+}
 
 // Same rule as web_name() in scripts/export_web.py.
 const scanUrl = (id: string) => `${import.meta.env.BASE_URL}scans/${id.replace("@", "_w")}.jpg`;
@@ -121,7 +134,7 @@ function ClinicDetail({ clinic, closeRef }: { clinic: Clinic; closeRef: React.Re
           <div className="scan-strip">
             {wearStrip.map((id) => (
               <figure key={id} className="scan">
-                <img src={scanUrl(id)} alt={`The same retina at camera wear level ${id.split("@")[1] ?? "0"}`} loading="lazy" />
+                <ScanImage id={id} alt={`The same retina at camera wear level ${id.split("@")[1] ?? "0"}`} />
                 <figcaption className="caption">
                   Wear <span className="num">{id.split("@")[1] ?? "0.00"}</span>
                 </figcaption>
@@ -157,7 +170,7 @@ function AlarmScans({ alarm }: { alarm: AlarmFile }) {
           <div className="label">Least like the validated scans</div>
           <div className="scan-grid">
             {flagged.map((id) => (
-              <img key={id} src={scanUrl(id)} alt={`Flagged retina scan ${id}`} loading="lazy" />
+              <ScanImage key={id} id={id} alt={`Flagged retina scan ${id}`} />
             ))}
           </div>
         </div>
@@ -165,7 +178,7 @@ function AlarmScans({ alarm }: { alarm: AlarmFile }) {
           <div className="label">Typical validated scans</div>
           <div className="scan-grid">
             {typical.map((id) => (
-              <img key={id} src={scanUrl(id)} alt={`Validated retina scan ${id}`} loading="lazy" />
+              <ScanImage key={id} id={id} alt={`Validated retina scan ${id}`} />
             ))}
           </div>
         </div>

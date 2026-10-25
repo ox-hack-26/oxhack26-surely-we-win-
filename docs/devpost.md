@@ -13,18 +13,23 @@ The alarm demo runs from a fresh clone with **no API keys**: it replays saved Ge
 `sample-data/gemini/` and reads the sample alarms in `sample-data/`, so there is nothing to download.
 
 ```bash
-git clone -b vansh/addons https://github.com/ox-hack-26/oxhack26-surely-we-win-.git
+git clone https://github.com/ox-hack-26/oxhack26-surely-we-win-.git
 cd oxhack26-surely-we-win-
 python -m venv .venv
 .venv\Scripts\activate            # macOS/Linux: source .venv/bin/activate
 pip install -r requirements-addons.txt
 python -m addons.run_demo --clinic US-WEAR-01 --replay   # the worn-camera alarm
 python -m addons.run_demo --all --replay                 # all 8 alarms
-python -m pytest -q tests                                # 58 offline tests
+python -m pytest -q tests                                # 71 offline tests (7 more need a live database)
 ```
 
 Each run prints the likely cause and a short alert script, and writes the cause and the draft
 incident report to `addons/out/`.
+
+Only the IDRiD scan images are in the repo: the EyePACS, APTOS and Messidor-2 licences don't allow
+redistribution. Without those images the saved Gemini answers can't be matched, so a fresh clone falls
+back to the rule-based cause and the template report, and the web app shows a placeholder where a scan
+would be. Download the datasets (`python scripts/download_data.py`) and run the pipeline to get them back.
 
 The dashboard also starts with no keys. It reads the engine's replay results from `sample-data/`
 (no longer synthetic):

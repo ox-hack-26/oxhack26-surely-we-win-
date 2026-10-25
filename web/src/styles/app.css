@@ -426,6 +426,11 @@ input[type="range"]:disabled { opacity: 0.4; cursor: default; }
 .scan-grid img, .scan img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 50%; background: var(--ground); }
 .scan-strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--s-2); }
 .scan { display: grid; gap: var(--s-1); justify-items: center; min-width: 0; }
+.scan-missing {
+  display: grid; place-items: center; width: 100%; aspect-ratio: 1; padding: var(--s-2); border-radius: 50%;
+  border: 1px dashed var(--hairline-strong); background: var(--ground); color: var(--muted);
+  font-size: var(--text-micro); line-height: var(--lh-micro); text-align: center;
+}
 .stats-table { width: 100%; border-collapse: collapse; font-size: var(--text-label); margin-top: var(--s-2); }
 .stats-table th, .stats-table td { padding: var(--s-2) 0; border-bottom: 1px solid var(--hairline); text-align: right; }
 .stats-table th[scope="row"], .stats-table thead th:first-child { text-align: left; font-weight: 400; color: var(--ink-2); }

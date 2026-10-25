@@ -27,3 +27,10 @@ dist/
 # os
 .DS_Store
 Thumbs.db
+
+# Dataset licences: EyePACS, APTOS and Messidor-2 images may not be redistributed, so only IDRiD
+# copies are committed. The pipeline still writes the others locally for the demo.
+/sample-data/images/*
+!/sample-data/images/idrid-*
+/web/public/scans/*
+!/web/public/scans/idrid-*
