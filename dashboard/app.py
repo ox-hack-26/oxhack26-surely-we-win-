@@ -12,6 +12,7 @@ from ui.costs import recompute
 from ui.real_charts import catch_chart, drift_chart
 
 load_dotenv(Path(__file__).parent / '.env')
+load_dotenv(Path(__file__).parents[1] / '.env')  # the repo's .env, where TIGER_DATABASE_URL lives
 st.set_page_config(page_title='ClinicDrift | OxHack',page_icon='👁️',layout='wide')
 st.markdown("""<style>.block-container{padding-top:1.4rem;max-width:1450px}div[data-testid='stMetric']{background:rgba(128,128,128,.12);border:1px solid rgba(128,128,128,.25);padding:14px;border-radius:12px}div[data-testid='stMetric'] [data-testid='stMetricValue'],div[data-testid='stMetric'] [data-testid='stMetricLabel']{color:var(--text-color)!important}</style>""",unsafe_allow_html=True)
 page = st.sidebar.radio(
