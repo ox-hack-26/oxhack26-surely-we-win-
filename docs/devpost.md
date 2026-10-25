@@ -209,6 +209,16 @@ pipeline (`python -m clinicdrift.engine.pipeline --tiger`) never duplicates a sc
 sequence: [docs/tiger.md](tiger.md).
 [TBD: these runs are on a local TimescaleDB 2.31; repeat on the Tiger Cloud service and update the numbers]
 
+### Best Use of Vultr
+ClinicDrift runs on a Vultr cloud VM (Ubuntu 24.04), so a clinic lead needs nothing but a browser.
+One VM serves both front ends: the 3D web app (the globe, the clinics week by week, the cost sliders
+that re-decide every alarm, the story and the backtest) and the Streamlit dashboard, which reads the
+monitoring data live from Tiger Cloud. Each is a single script pasted into Vultr's Cloud-Init or run
+over SSH (`deploy/vultr-web.sh`, `deploy/vultr-dashboard.sh`): it clones the repo, builds, installs a
+systemd service and restarts on failure, and running it again updates to the latest commit. The Tiger
+connection string lives only in a root-only environment file on the VM, never in the repo.
+Live: [TBD Sarah: 3D app http://<VM IP>:8080/ and dashboard http://<VM IP>/]
+
 ## Data and credits
 
 - EyePACS diabetic retinopathy dataset
