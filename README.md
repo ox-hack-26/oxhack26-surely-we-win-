@@ -1,6 +1,8 @@
 # ClinicDrift
 
-Predicts when an eye-screening AI has quietly got worse at a clinic, weeks before the expert grades arrive, and decides when to pull it for review. Built at OxHack 26 for the HRT "Best Use of Data for Predictions and Decision Making" prize.
+Predicts when an eye-screening AI has quietly got worse at a clinic, weeks before the expert grades arrive, and decides when to pull it for review. Built at OxHack 26 for the HRT "Best Use of Data for Predictions and Decision Making" prize, where it won an Honourable Mention.
+
+**Live demo: [tejas-kaushik.github.io/clinicdrift](https://tejas-kaushik.github.io/clinicdrift/)**. The 3D web app plays 20 weeks at 10 simulated clinics: press "Play the story". The live dashboard needs its own Python server, so it isn't part of the hosted demo; see [Setup](#setup) to run it.
 
 ## Team
 
